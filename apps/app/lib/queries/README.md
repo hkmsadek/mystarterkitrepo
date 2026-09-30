@@ -10,7 +10,7 @@ This directory owns reusable server-state queries. Components and route loaders 
 | `billing.ts` | `['billing', 'subscription', activeOrgId]` | Subscription state scoped to the active organization, plus the Stripe checkout and portal redirects |
 | `config.ts` | `['config', 'socialProviders']` | Server-derived deployment capabilities |
 | `organization.ts` | `['organization', 'members', activeOrgId]` | Members of the active organization, plus organization creation |
-| `blog.ts` | `['blog', 'mine']` | The signed-in user's blog posts and the create/delete mutations; public reads happen server-side in the marketing site |
+| `blog.ts` | `['blog', 'all']` | Every blog post (public while under test) and the create/delete mutations; public reads happen server-side in the marketing site |
 | `todo.ts` | `['todo', 'list']` | The signed-in user's todo items and the mutations that change them |
 
 Tests live beside the query modules.

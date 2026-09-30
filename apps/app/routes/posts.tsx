@@ -15,22 +15,23 @@ import { ExternalLink, Trash2 } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 
 import {
+  useAllPostsQuery,
   useCreatePost,
-  useMyPostsQuery,
   useRemovePost,
 } from "#lib/queries/blog";
 
-export const Route = createFileRoute("/(app)/posts")({
+export const Route = createFileRoute("/posts")({
   component: Posts,
 });
 
 function Posts() {
   return (
-    <div className="p-6 space-y-6">
+    <div className="mx-auto max-w-3xl p-6 space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Blog posts</h2>
         <p className="text-muted-foreground">
-          Published posts appear on the public blog immediately. No rebuild.
+          Public test page, no sign-in required. Published posts appear on the
+          blog immediately. No rebuild.
         </p>
       </div>
 
@@ -163,7 +164,7 @@ function NewPostForm() {
 }
 
 function PostList() {
-  const { data, isPending, error } = useMyPostsQuery();
+  const { data, isPending, error } = useAllPostsQuery();
   const remove = useRemovePost();
 
   if (isPending) {
@@ -180,7 +181,7 @@ function PostList() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Your posts</CardTitle>
+        <CardTitle>All posts</CardTitle>
         <CardDescription>
           {data.length === 0 ? "Nothing written yet." : `${data.length} total`}
         </CardDescription>

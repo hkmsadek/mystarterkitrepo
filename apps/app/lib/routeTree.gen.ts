@@ -10,16 +10,21 @@
 
 import { Route as rootRouteImport } from './../routes/__root'
 import { Route as appRouteRouteImport } from './../routes/(app)/route'
+import { Route as PostsRouteImport } from './../routes/posts'
 import { Route as TodosRouteImport } from './../routes/todos'
 import { Route as appIndexRouteImport } from './../routes/(app)/index'
 import { Route as appMembersRouteImport } from './../routes/(app)/members'
-import { Route as appPostsRouteImport } from './../routes/(app)/posts'
 import { Route as appSettingsRouteImport } from './../routes/(app)/settings'
 import { Route as authLoginRouteImport } from './../routes/(auth)/login'
 import { Route as authSignupRouteImport } from './../routes/(auth)/signup'
 
 const appRouteRoute = appRouteRouteImport.update({
   id: '/(app)',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostsRoute = PostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TodosRoute = TodosRouteImport.update({
@@ -35,11 +40,6 @@ const appIndexRoute = appIndexRouteImport.update({
 const appMembersRoute = appMembersRouteImport.update({
   id: '/members',
   path: '/members',
-  getParentRoute: () => appRouteRoute,
-} as any)
-const appPostsRoute = appPostsRouteImport.update({
-  id: '/posts',
-  path: '/posts',
   getParentRoute: () => appRouteRoute,
 } as any)
 const appSettingsRoute = appSettingsRouteImport.update({
@@ -59,18 +59,18 @@ const authSignupRoute = authSignupRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/posts': typeof PostsRoute
   '/todos': typeof TodosRoute
   '/members': typeof appMembersRoute
-  '/posts': typeof appPostsRoute
   '/settings': typeof appSettingsRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
   '/': typeof appIndexRoute
 }
 export interface FileRoutesByTo {
+  '/posts': typeof PostsRoute
   '/todos': typeof TodosRoute
   '/members': typeof appMembersRoute
-  '/posts': typeof appPostsRoute
   '/settings': typeof appSettingsRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
@@ -79,9 +79,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/(app)': typeof appRouteRouteWithChildren
+  '/posts': typeof PostsRoute
   '/todos': typeof TodosRoute
   '/(app)/members': typeof appMembersRoute
-  '/(app)/posts': typeof appPostsRoute
   '/(app)/settings': typeof appSettingsRoute
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
@@ -90,16 +90,16 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/todos' | '/members' | '/posts' | '/settings' | '/login' | '/signup' | '/'
+    '/posts' | '/todos' | '/members' | '/settings' | '/login' | '/signup' | '/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/todos' | '/members' | '/posts' | '/settings' | '/login' | '/signup' | '/'
+    '/posts' | '/todos' | '/members' | '/settings' | '/login' | '/signup' | '/'
   id:
     | '__root__'
     | '/(app)'
+    | '/posts'
     | '/todos'
     | '/(app)/members'
-    | '/(app)/posts'
     | '/(app)/settings'
     | '/(auth)/login'
     | '/(auth)/signup'
@@ -108,6 +108,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   appRouteRoute: typeof appRouteRouteWithChildren
+  PostsRoute: typeof PostsRoute
   TodosRoute: typeof TodosRoute
   authLoginRoute: typeof authLoginRoute
   authSignupRoute: typeof authSignupRoute
@@ -120,6 +121,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof appRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/todos': {
@@ -141,13 +149,6 @@ declare module '@tanstack/react-router' {
       path: '/members'
       fullPath: '/members'
       preLoaderRoute: typeof appMembersRouteImport
-      parentRoute: typeof appRouteRoute
-    }
-    '/(app)/posts': {
-      id: '/(app)/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof appPostsRouteImport
       parentRoute: typeof appRouteRoute
     }
     '/(app)/settings': {
@@ -176,14 +177,12 @@ declare module '@tanstack/react-router' {
 
 interface appRouteRouteChildren {
   appMembersRoute: typeof appMembersRoute
-  appPostsRoute: typeof appPostsRoute
   appSettingsRoute: typeof appSettingsRoute
   appIndexRoute: typeof appIndexRoute
 }
 
 const appRouteRouteChildren: appRouteRouteChildren = {
   appMembersRoute: appMembersRoute,
-  appPostsRoute: appPostsRoute,
   appSettingsRoute: appSettingsRoute,
   appIndexRoute: appIndexRoute,
 }
@@ -194,6 +193,7 @@ const appRouteRouteWithChildren = appRouteRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   appRouteRoute: appRouteRouteWithChildren,
+  PostsRoute: PostsRoute,
   TodosRoute: TodosRoute,
   authLoginRoute: authLoginRoute,
   authSignupRoute: authSignupRoute,

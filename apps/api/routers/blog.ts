@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 
-import { protectedProcedure, publicProcedure, router } from "../lib/trpc.js";
+import { publicProcedure, router } from "../lib/trpc.js";
 
 const slug = z
   .string()
@@ -55,16 +55,14 @@ export const blogRouter = router({
       return row;
     }),
 
-  // The signed-in user's own posts, drafts included.
-  mine: protectedProcedure.query(({ ctx }) =>
-    ctx.db
-      .select()
-      .from(post)
-      .where(eq(post.authorId, ctx.user.id))
-      .orderBy(desc(post.createdAt)),
+  // Public for testing: anyone can author, edit and delete any post. Before
+  // shipping, switch the three procedures below to `protectedProcedure`,
+  // scope `all` and `remove` on `ctx.user.id`, and restore `mine`.
+  all: publicProcedure.query(({ ctx }) =>
+    ctx.db.select().from(post).orderBy(desc(post.createdAt)),
   ),
 
-  create: protectedProcedure
+  create: publicProcedure
     .input(
       z.object({
         slug,
@@ -90,19 +88,19 @@ export const blogRouter = router({
         .insert(post)
         .values({
           ...input,
-          authorId: ctx.user.id,
+          authorId: ctx.user?.id ?? null,
           publishedAt: input.published ? new Date() : null,
         })
         .returning();
       return row;
     }),
 
-  remove: protectedProcedure
+  remove: publicProcedure
     .input(z.object({ id: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const [row] = await ctx.db
         .delete(post)
-        .where(and(eq(post.id, input.id), eq(post.authorId, ctx.user.id)))
+        .where(eq(post.id, input.id))
         .returning({ id: post.id });
 
       if (!row) {

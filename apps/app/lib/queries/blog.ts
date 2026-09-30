@@ -1,5 +1,5 @@
 /**
- * @file The signed-in user's blog posts.
+ * @file Blog authoring (public while under test).
  *
  * Public readers never come through here: the marketing site fetches posts
  * server-side from the same tRPC procedures. This module only covers authoring.
@@ -14,17 +14,17 @@ import {
 
 import { trpcClient } from "../trpc";
 
-export const myPostsQueryKey = ["blog", "mine"] as const;
+export const allPostsQueryKey = ["blog", "all"] as const;
 
-export function myPostsQueryOptions() {
+export function allPostsQueryOptions() {
   return queryOptions({
-    queryKey: myPostsQueryKey,
-    queryFn: () => trpcClient.blog.mine.query(),
+    queryKey: allPostsQueryKey,
+    queryFn: () => trpcClient.blog.all.query(),
   });
 }
 
-export function useMyPostsQuery() {
-  return useQuery(myPostsQueryOptions());
+export function useAllPostsQuery() {
+  return useQuery(allPostsQueryOptions());
 }
 
 export type NewPostInput = {
@@ -40,7 +40,7 @@ export function useCreatePost() {
   return useMutation({
     mutationFn: (input: NewPostInput) => trpcClient.blog.create.mutate(input),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: myPostsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: allPostsQueryKey }),
   });
 }
 
@@ -49,6 +49,6 @@ export function useRemovePost() {
   return useMutation({
     mutationFn: (id: string) => trpcClient.blog.remove.mutate({ id }),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: myPostsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: allPostsQueryKey }),
   });
 }

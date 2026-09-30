@@ -81,17 +81,16 @@ describe("blog", () => {
     expect(found.title).toBe("Hello");
   });
 
-  it("keeps drafts out of public reads but in the author's own list", async () => {
-    const author = callerFor(await insertUser("a@example.com"));
+  it("keeps drafts out of public reads but in the authoring list", async () => {
     const anonymous = callerFor(null);
 
-    await author.create(draft);
+    await anonymous.create(draft);
 
     expect(await anonymous.list()).toEqual([]);
     await expect(anonymous.bySlug({ slug: "draft" })).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
-    expect((await author.mine()).map((p) => p.slug)).toEqual(["draft"]);
+    expect((await anonymous.all()).map((p) => p.slug)).toEqual(["draft"]);
   });
 
   it("rejects a duplicate slug and a malformed slug", async () => {
@@ -106,20 +105,20 @@ describe("blog", () => {
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
-  it("requires a session to write and lets only the author delete", async () => {
+  it("records the author when signed in and allows anonymous writes", async () => {
     const alice = callerFor(await insertUser("alice@example.com"));
-    const bob = callerFor(await insertUser("bob@example.com"));
     const anonymous = callerFor(null);
 
-    await expect(anonymous.create(draft)).rejects.toMatchObject({
-      code: "UNAUTHORIZED",
-    });
+    const signed = await alice.create({ ...draft, slug: "signed" });
+    expect(signed.authorId).toMatch(/^usr_/);
 
-    const mine = await alice.create(draft);
-    await expect(bob.remove({ id: mine.id })).rejects.toMatchObject({
+    const anon = await anonymous.create(draft);
+    expect(anon.authorId).toBeNull();
+
+    await anonymous.remove({ id: signed.id });
+    await expect(anonymous.remove({ id: signed.id })).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
-    await alice.remove({ id: mine.id });
-    expect(await alice.mine()).toEqual([]);
+    expect((await anonymous.all()).map((p) => p.slug)).toEqual(["draft"]);
   });
 });
