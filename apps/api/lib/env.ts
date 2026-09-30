@@ -2,9 +2,11 @@ import { z } from "zod";
 
 /** Environment contract and source for the inferred `Env` type. */
 export const envSchema = z.object({
-  // The database arrives via Hyperdrive bindings, not a connection string, so no
-  // DATABASE_URL here – that belongs to `db/`'s drizzle-kit process.
   ENVIRONMENT: z.enum(["production", "staging", "development"]),
+  // The platform's own deployment reaches Postgres through Hyperdrive bindings
+  // and leaves this unset. A per-customer deployment has no Hyperdrive and
+  // gets its database as this secret, set on the script through the API.
+  DATABASE_URL: z.string().optional(),
   // Required: the SPA build fails without it and every Wrangler env sets it.
   APP_NAME: z.string(),
   APP_ORIGIN: z.url(),

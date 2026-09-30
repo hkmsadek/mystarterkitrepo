@@ -13,6 +13,7 @@ export { default as app, appRouter } from "./lib/app.js";
 
 // Type exports
 export type { AppRouter } from "./lib/app.js";
+export type { Env } from "./lib/env.js";
 // `AppContext` and `TRPCContext` both – declaration emit needs them nameable
 // from this entry point, since the app's tRPC client infers through them.
 export type * from "./lib/context.js";

@@ -2,21 +2,24 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
 
   // [METADATA]
-  // Edge router that receives all traffic and routes to api/app via service bindings.
-  "name": "starterkitsaas-web",
+  // The one deployable worker: marketing site, app and API (see worker.ts).
+  //
+  // The Astro adapter builds it and emits a resolved config to
+  // `dist/server/wrangler.json`, which is what `wrangler deploy` takes. The
+  // Wrangler environment is chosen at build time with `CLOUDFLARE_ENV`.
+  "name": "starterkitsaas",
   "main": "./worker.ts",
   "compatibility_date": "2026-08-08",
-  // Required by the Astro Cloudflare adapter, which renders on-demand pages
-  // inside this worker.
+  // Required by the API's database driver and auth, and by the Astro adapter.
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  "upload_source_maps": true,
   "observability": { "enabled": true },
 
   // [ASSETS]
-  // Prerendered pages and static files. The Astro adapter sets the directory
-  // (`dist/client`) in the config it emits to `dist/server/wrangler.json`,
-  // which is what gets deployed; naming one here would shadow Astro's dev
-  // server for prerendered routes.
+  // Prerendered pages, static files, and the SPA build under `/_app/`. The
+  // adapter sets the directory (`dist/client`) in the emitted config; naming
+  // one here would shadow Astro's dev server for prerendered routes.
   "assets": {
     "binding": "ASSETS",
     // Force worker execution for "/" to enable auth-aware routing
@@ -24,54 +27,74 @@
     "run_worker_first": ["/"]
   },
 
-  // [SERVICE BINDINGS]
-  // Connect to other workers for dynamic routing.
-  // NOTE: services is non-inheritable – must be specified per environment.
-  // Use naming convention: <worker>-<env> (e.g., example-app-staging)
-  "services": [
-    { "binding": "APP_SERVICE", "service": "starterkitsaas-app" },
-    { "binding": "API_SERVICE", "service": "starterkitsaas-api" }
-  ],
-
   // [ENV:PRODUCTION]
-  // Command: bun wrangler deploy --env=""
+  // Command: bun deploy:production (builds, then deploys dist/server/wrangler.json)
   //
   // Served from the free workers.dev address (`workers_dev: true` above). To
   // attach a custom domain, add a `routes` entry here: this worker is the
   // origin for the whole hostname, so Wrangler creates the DNS record and
   // certificate. The pattern must be a bare hostname – no "/*", no zone_name.
   //   "routes": [{ "pattern": "example.com", "custom_domain": true }],
+  //
+  // Replace RESEND_EMAIL_FROM before going live. `onboarding@resend.dev` is
+  // Resend's shared testing sender: it can only deliver to the address that
+  // owns the API key, and every other recipient gets a 403. Sign-in is email
+  // OTP, so leaving it here means nobody but you can sign in.
   "vars": {
-    "ENVIRONMENT": "production"
+    "ENVIRONMENT": "production",
+    "APP_NAME": "Starterkit SaaS",
+    "APP_ORIGIN": "https://starterkitsaas.YOUR-SUBDOMAIN.workers.dev",
+    "RESEND_EMAIL_FROM": "onboarding@resend.dev"
+  },
+  // The platform's own database, pooled and cached by Hyperdrive. A customer
+  // copy deployed to a dispatch namespace has no Hyperdrive; it gets the
+  // `DATABASE_URL` secret instead (apps/api/lib/db.ts).
+  // oxfmt-ignore
+  "hyperdrive": [
+    { "binding": "HYPERDRIVE_CACHED", "id": "your-hyperdrive-cached-id-here" },
+    { "binding": "HYPERDRIVE_UNCACHED", "id": "your-hyperdrive-uncached-id-here" }
+  ],
+  // Deploy fails fast when one of these is unset. Values live in Cloudflare
+  // (`wrangler secret put`); only the required-name contract is versioned.
+  // Not inheritable, so every environment repeats it.
+  "secrets": {
+    "required": ["BETTER_AUTH_SECRET", "RESEND_API_KEY"]
   },
 
   "env": {
     // [ENV:DEVELOPMENT]
-    // Named Wrangler development environment; `bun dev` uses Astro instead.
+    // `astro dev` runs this worker in workerd against the API dev server's
+    // database: astro.config.mjs copies DATABASE_URL and the secrets from the
+    // root .env files into the process so Wrangler can read them.
     "dev": {
-      "services": [
-        { "binding": "APP_SERVICE", "service": "starterkitsaas-app-dev" },
-        { "binding": "API_SERVICE", "service": "starterkitsaas-api-dev" }
-      ],
       "vars": {
-        "ENVIRONMENT": "development"
+        "ENVIRONMENT": "development",
+        "APP_NAME": "Starterkit SaaS",
+        "APP_ORIGIN": "http://localhost:4321",
+        "RESEND_EMAIL_FROM": "onboarding@resend.dev"
+      },
+      "secrets": {
+        "required": ["BETTER_AUTH_SECRET", "RESEND_API_KEY", "DATABASE_URL"]
       }
     },
 
     // [ENV:STAGING]
-    // Command: bun wrangler deploy --env staging
+    // Command: bun deploy:staging
     "staging": {
-      "services": [
-        { "binding": "APP_SERVICE", "service": "starterkitsaas-app-staging" },
-        { "binding": "API_SERVICE", "service": "starterkitsaas-api-staging" }
-      ],
       "vars": {
-        "ENVIRONMENT": "staging"
+        "ENVIRONMENT": "staging",
+        "APP_NAME": "Starterkit SaaS",
+        "APP_ORIGIN": "https://starterkitsaas-staging.YOUR-SUBDOMAIN.workers.dev",
+        "RESEND_EMAIL_FROM": "onboarding@resend.dev"
       },
       // oxfmt-ignore
-      "routes": [
-        { "pattern": "staging.example.com", "custom_domain": true }
-      ]
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE_CACHED", "id": "your-staging-hyperdrive-cached-id-here" },
+        { "binding": "HYPERDRIVE_UNCACHED", "id": "your-staging-hyperdrive-uncached-id-here" }
+      ],
+      "secrets": {
+        "required": ["BETTER_AUTH_SECRET", "RESEND_API_KEY"]
+      }
     }
   }
 }

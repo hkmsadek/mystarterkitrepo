@@ -6,7 +6,7 @@ export const prerender = false;
 import BaseLayout from '#layouts/BaseLayout.astro';
 import { api } from '../../lib/api';
 
-const posts = await api(Astro.request).blog.list.query();
+const posts = await api(Astro.request, Astro.locals.cfContext).blog.list.query();
 
 // Short shared cache: a minute of staleness is fine for a blog index and keeps
 // the API out of the hot path for repeat visitors.

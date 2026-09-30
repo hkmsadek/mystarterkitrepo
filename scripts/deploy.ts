@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 /**
- * @file Builds and deploys the three workers to one environment.
+ * @file Builds and deploys the worker to one environment.
  *
  * The same command runs from a laptop and from `deploy.yml`, so a release from
  * either cannot drift in order or in environment selection. CI passes
@@ -70,7 +70,11 @@ if (!skipBuild) {
 // Wrangler resolves `./dist` relative to each `wrangler.jsonc` and uploads an
 // empty asset directory without complaint, so a missing build surfaces as a
 // blank site rather than a failed deploy.
-for (const artifact of ["apps/email/dist", "apps/app/dist", "apps/web/dist"]) {
+for (const artifact of [
+  "apps/email/dist",
+  "apps/app/dist",
+  "apps/web/dist/server/wrangler.json",
+]) {
   try {
     await access(resolve(repoRoot, artifact));
   } catch {
@@ -89,33 +93,9 @@ for (const artifact of ["apps/email/dist", "apps/app/dist", "apps/web/dist"]) {
 // merges the files under `process.env`, so an exported value wins over the
 // placeholders in the committed `.env`.
 
-// Production is Wrangler's top-level environment, which is selected by an empty
-// `--env`. Mapping it here, once, is why nothing downstream has to remember
-// that an absent value deploys production.
-const wranglerEnvironment = environment === "production" ? "" : environment;
+console.log(`\nDeploying to ${environment}.`);
 
-console.log(
-  `\nDeploying to ${environment}. Sequential and not atomic: a failure partway ` +
-    `leaves some workers on the new version.`,
-);
-
-// Order matters. A service binding resolves its target by name at deploy time,
-// so api and app must exist before web binds to them, and web holds the only
-// public route – flipping it last moves user traffic after the workers behind
-// it are new.
-for (const config of ["apps/api/wrangler.jsonc", "apps/app/wrangler.jsonc"]) {
-  await run([
-    "bun",
-    "wrangler",
-    "deploy",
-    "--config",
-    config,
-    "--env",
-    wranglerEnvironment,
-  ]);
-}
-
-// The generated web config is already resolved for one environment (see
+// The generated config is already resolved for one environment (see
 // `cloudflareEnv` above), so it takes no `--env`.
 await run([
   "bun",

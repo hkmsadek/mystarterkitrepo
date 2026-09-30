@@ -1,8 +1,8 @@
 ## Monorepo Structure
 
-- `apps/web/` – Astro marketing site (prerendered pages plus on-demand pages such as `/blog`), served by an edge worker that also routes traffic to the app/api workers via service bindings
-- `apps/app/` – Main SPA (React, TanStack Router file-based routing)
-- `apps/api/` – API server (Hono + tRPC + Better Auth)
+- `apps/web/` – The one deployable worker: Astro marketing site (prerendered pages plus on-demand pages such as `/blog`), the SPA build, and the API, composed in `worker.ts`
+- `apps/app/` – Main SPA (React, TanStack Router file-based routing); built into the web worker's assets under `/_app/`
+- `apps/api/` – API (Hono + tRPC + Better Auth); mounted in the web worker, run standalone by `dev.ts` for local development
 - `apps/email/` – React Email templates (built before API dev server starts)
 - `packages/ui/` – shadcn/ui components (new-york style)
 - `packages/core/` – Shared utilities
@@ -32,9 +32,9 @@ bun run format:check           # Oxfmt (bun run format writes)
 bun typecheck                  # tsc --build (builds apps/email for its types)
 bun infra:check                # Terraform fmt + validate, no credentials or state
 bun ui:add <component>         # Add shadcn/ui component to packages/ui
-bun deploy:{staging,production} # Build and deploy api → app → web; no migrations
+bun deploy:{staging,production} # Build and deploy the worker; no migrations
 
-# Per-app: bun {web,app,api}:{dev,build,deploy}; test for app/api, check for web
+# Per-app: bun {web,app,api}:{dev,build}; web:deploy; test for app/api, check for web
 # Database: bun db:{push,generate,migrate,studio,seed,export}
 #   :staging / :production on migrate, studio, export; seed stops at :staging;
 #   generate is local-only, and push refuses a non-local database
@@ -47,10 +47,11 @@ bun deploy:{staging,production} # Build and deploy api → app → web; no migra
 
 ## Architecture
 
-- Three workers: web (marketing site + edge router), app (SPA assets), api (Hono server).
-- API and web workers have `nodejs_compat` enabled (the web worker renders Astro on-demand pages); the app worker does NOT.
-- Web worker routes: `/api/*` → API worker, app routes → App worker, static → assets.
-- Service bindings connect workers internally (no public cross-worker URLs).
+- One worker (`apps/web/worker.ts`): `/api/*` and `/health` → the API's Hono app in-process; app routes → SPA shell from assets; `/` → app or marketing by auth-hint cookie; everything else → Astro (prerendered from assets, on-demand rendered in the worker).
+- One worker is what a Workers for Platforms dispatch namespace accepts, so a customer's customised copy deploys in the same shape as the platform itself.
+- Database: Hyperdrive bindings when bound (the platform), else the `DATABASE_URL` secret (a customer copy) – `resolveDatabaseSources` in `apps/api/lib/db.ts`.
+- The Astro Cloudflare adapter builds the worker and emits `apps/web/dist/server/wrangler.json`, resolved for the environment chosen at build time (`CLOUDFLARE_ENV`); deploy that file, never `apps/web/wrangler.jsonc` directly.
+- `nodejs_compat` is on (database driver, auth, Astro adapter).
 - Per-workspace conventions live in subdirectory `AGENTS.md` files: `apps/api/`, `apps/app/`, `db/`, `infra/`, `packages/ui/`.
 
 ## Agent Tooling

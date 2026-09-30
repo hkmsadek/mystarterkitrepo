@@ -2,7 +2,9 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
 
   // [METADATA]
-  // API worker accessed via service binding from web worker (no routes needed).
+  // Local development only: `dev.ts` reads this through Wrangler's platform
+  // proxy for Hyperdrive bindings and vars. The API is deployed inside the
+  // web worker (apps/web/wrangler.jsonc), never from this file.
   "name": "starterkitsaas-api",
   "main": "./worker.ts",
   "compatibility_date": "2026-08-08",

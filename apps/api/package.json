@@ -6,6 +6,7 @@
   "exports": {
     ".": "./index.ts",
     "./auth": "./lib/auth.ts",
+    "./worker": "./worker.ts",
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -14,8 +15,7 @@
     "build": "bun build index.ts --outdir dist --target bun",
     "test": "bun --bun vitest",
     "typecheck": "tsc --noEmit",
-    "deploy": "wrangler deploy --env-file ../../.env --env-file ../../.env.local",
-    "logs": "wrangler tail --env-file ../../.env --env-file ../../.env.local"
+    "logs": "wrangler tail --config ../web/dist/server/wrangler.json"
   },
   "dependencies": {
     "@better-auth/passkey": "^1.7.4",

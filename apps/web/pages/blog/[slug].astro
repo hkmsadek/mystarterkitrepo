@@ -11,7 +11,7 @@ const { slug } = Astro.params;
 
 let post;
 try {
-  post = await api(Astro.request).blog.bySlug.query({ slug: slug ?? '' });
+  post = await api(Astro.request, Astro.locals.cfContext).blog.bySlug.query({ slug: slug ?? '' });
 } catch (error) {
   // Unknown or unpublished slug. Anything else is a real failure and should
   // surface as a 500 rather than a misleading "not found".

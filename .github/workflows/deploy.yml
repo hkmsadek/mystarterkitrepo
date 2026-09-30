@@ -76,9 +76,8 @@ jobs:
 
       # The Astro adapter resolves the Wrangler environment when the web worker
       # is built (`CLOUDFLARE_ENV`), and the CI artifact is built for
-      # production. Staging therefore rebuilds this one worker from the same
-      # commit; its config, name and service bindings would otherwise be
-      # production's. The api and app workers still deploy from the artifact.
+      # production. Staging therefore rebuilds the worker from the same
+      # commit; its config and name would otherwise be production's.
       - name: Rebuild web worker for staging
         if: inputs.environment != 'production'
         env:
@@ -130,18 +129,8 @@ jobs:
         env:
           DEPLOY_ENV: ${{ inputs.environment }}
         run: |
-          # Production is the top-level config, selected with an empty
-          # environment; staging is named. Wrangler rejects `--env production`.
-          if [[ "$DEPLOY_ENV" == "production" ]]; then
-            env_args=(--env "")
-          else
-            env_args=(--env "$DEPLOY_ENV")
-          fi
-          for app in api app; do
-            bun wrangler deploy --config "apps/${app}/wrangler.jsonc" "${env_args[@]}" --dry-run
-          done
-          # The web worker's config is emitted by the Astro adapter at build
-          # time, already resolved for the target environment.
+          # The worker's config is emitted by the Astro adapter at build time,
+          # already resolved for the target environment.
           bun wrangler deploy --config apps/web/dist/server/wrangler.json --dry-run
 
       # Migrations run before the workers, so new code never meets an old

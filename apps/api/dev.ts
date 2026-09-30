@@ -63,8 +63,8 @@ const cf = await getPlatformProxy<CloudflareEnv>({
 // - db: always fresh, the default for everything
 // - dbCached: Hyperdrive query caching, opt-in for read-heavy queries
 app.use(async (c, next) => {
-  const db = createDb(cf.env.HYPERDRIVE_UNCACHED);
-  const dbCached = createDb(cf.env.HYPERDRIVE_CACHED);
+  const db = createDb(cf.env.HYPERDRIVE_UNCACHED.connectionString);
+  const dbCached = createDb(cf.env.HYPERDRIVE_CACHED.connectionString);
 
   // Prefer local .env values for the remaining schema fields, falling back to
   // Cloudflare bindings. Deriving the keys keeps new fields in this merge.

@@ -12,7 +12,7 @@ import { secureHeaders } from "hono/secure-headers";
 import app from "./lib/app.js";
 import { createAuth } from "./lib/auth.js";
 import type { AppContext } from "./lib/context.js";
-import { createDb } from "./lib/db.js";
+import { createDb, resolveDatabaseSources } from "./lib/db.js";
 import type { Env } from "./lib/env.js";
 import {
   errorHandler,
@@ -20,9 +20,11 @@ import {
   requestIdGenerator,
 } from "./lib/middleware.js";
 
+// Hyperdrive is optional: a per-customer deployment supplies `DATABASE_URL`
+// instead (see `resolveDatabaseSources`).
 type CloudflareEnv = {
-  HYPERDRIVE_CACHED: Hyperdrive;
-  HYPERDRIVE_UNCACHED: Hyperdrive;
+  HYPERDRIVE_CACHED?: Hyperdrive;
+  HYPERDRIVE_UNCACHED?: Hyperdrive;
 } & Env;
 
 const worker = new Hono<{
@@ -41,8 +43,9 @@ worker.use(logger());
 
 // Initialize shared context for all requests
 worker.use(async (c, next) => {
-  const db = createDb(c.env.HYPERDRIVE_UNCACHED);
-  const dbCached = createDb(c.env.HYPERDRIVE_CACHED);
+  const sources = resolveDatabaseSources(c.env);
+  const db = createDb(sources.uncached);
+  const dbCached = createDb(sources.cached);
   // Better Auth owns its own SQL, so it gets the default client: a session or
   // permission row read from cache could be seconds behind a sign-out or a
   // role change.
