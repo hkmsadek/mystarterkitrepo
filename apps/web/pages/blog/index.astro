@@ -1,0 +1,49 @@
+---
+// Rendered on request: posts come from Postgres through the API, so a post
+// published from the app appears here on the next reload with no rebuild.
+export const prerender = false;
+
+import BaseLayout from '#layouts/BaseLayout.astro';
+import { api } from '../../lib/api';
+
+const posts = await api(Astro.request).blog.list.query();
+
+// Short shared cache: a minute of staleness is fine for a blog index and keeps
+// the API out of the hot path for repeat visitors.
+Astro.response.headers.set('Cache-Control', 'public, max-age=60');
+
+const dateFormat = new Intl.DateTimeFormat('en', { dateStyle: 'medium' });
+---
+
+<BaseLayout title="Blog - Starterkit SaaS" description="Posts rendered on request from the database.">
+  <section class="py-16 px-4 sm:px-6 lg:px-8">
+    <div class="container mx-auto max-w-3xl">
+      <h1 class="text-4xl font-bold tracking-tight mb-2">Blog</h1>
+      <p class="text-muted-foreground mb-10">
+        Every page under /blog is rendered by the edge worker when you request it.
+      </p>
+
+      {posts.length === 0 ? (
+        <p class="text-muted-foreground">No posts yet. Publish one from the app.</p>
+      ) : (
+        <ul class="divide-y">
+          {posts.map((post) => (
+            <li class="py-6">
+              <a href={`/blog/${post.slug}`} class="group block">
+                <h2 class="text-2xl font-semibold group-hover:text-primary transition-colors">
+                  {post.title}
+                </h2>
+                {post.publishedAt && (
+                  <time datetime={new Date(post.publishedAt).toISOString()} class="text-sm text-muted-foreground">
+                    {dateFormat.format(new Date(post.publishedAt))}
+                  </time>
+                )}
+                <p class="mt-2 text-muted-foreground">{post.excerpt}</p>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </section>
+</BaseLayout>

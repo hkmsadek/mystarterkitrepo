@@ -32,7 +32,7 @@
 - `lib/env.ts` exports the environment contract and inferred `Env` type. The current entrypoints do not call `parse`; do not claim runtime Zod validation unless that changes. `worker.ts` receives Cloudflare bindings through `c.env`, while `dev.ts` combines the Wrangler proxy with `process.env`.
 - `dev.ts` derives its generic local-env overlay from `envSchema`, excluding fields with special precedence. New schema fields therefore join the local merge automatically.
 - Do not add generated Wrangler types. They create a competing global `Env`, omit secrets not visible in `wrangler.jsonc`, and narrow placeholder vars to literals such as `APP_NAME: "Example"`. The local `CloudflareEnv` types combine the schema-derived `Env` with Hyperdrive bindings.
-- `nodejs_compat` compatibility flag required – web and app workers do NOT have it.
+- `nodejs_compat` compatibility flag required – the web worker has it too (Astro adapter); the app worker does NOT.
 
 ## Worker Entry
 

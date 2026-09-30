@@ -3,16 +3,21 @@
 
   // [METADATA]
   // Edge router that receives all traffic and routes to api/app via service bindings.
-  "name": "example-web",
+  "name": "starterkitsaas-web",
   "main": "./worker.ts",
   "compatibility_date": "2026-08-08",
-  "workers_dev": false,
+  // Required by the Astro Cloudflare adapter, which renders on-demand pages
+  // inside this worker.
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
   "observability": { "enabled": true },
 
   // [ASSETS]
-  // Serves bundled JavaScript, CSS, images, and other static assets.
+  // Prerendered pages and static files. The Astro adapter sets the directory
+  // (`dist/client`) in the config it emits to `dist/server/wrangler.json`,
+  // which is what gets deployed; naming one here would shadow Astro's dev
+  // server for prerendered routes.
   "assets": {
-    "directory": "./dist",
     "binding": "ASSETS",
     // Force worker execution for "/" to enable auth-aware routing
     // See docs/adr/001-auth-hint-cookie.md
@@ -24,20 +29,18 @@
   // NOTE: services is non-inheritable – must be specified per environment.
   // Use naming convention: <worker>-<env> (e.g., example-app-staging)
   "services": [
-    { "binding": "APP_SERVICE", "service": "example-app" },
-    { "binding": "API_SERVICE", "service": "example-api" }
+    { "binding": "APP_SERVICE", "service": "starterkitsaas-app" },
+    { "binding": "API_SERVICE", "service": "starterkitsaas-api" }
   ],
 
   // [ENV:PRODUCTION]
   // Command: bun wrangler deploy --env=""
   //
-  // Custom domain: this worker is the origin for the whole hostname, so Wrangler
-  // creates the DNS record and certificate and Terraform owns no DNS at all.
-  // The pattern must be a bare hostname – no "/*", no zone_name.
-  // oxfmt-ignore
-  "routes": [
-    { "pattern": "example.com", "custom_domain": true }
-  ],
+  // Served from the free workers.dev address (`workers_dev: true` above). To
+  // attach a custom domain, add a `routes` entry here: this worker is the
+  // origin for the whole hostname, so Wrangler creates the DNS record and
+  // certificate. The pattern must be a bare hostname – no "/*", no zone_name.
+  //   "routes": [{ "pattern": "example.com", "custom_domain": true }],
   "vars": {
     "ENVIRONMENT": "production"
   },
@@ -47,8 +50,8 @@
     // Named Wrangler development environment; `bun dev` uses Astro instead.
     "dev": {
       "services": [
-        { "binding": "APP_SERVICE", "service": "example-app-dev" },
-        { "binding": "API_SERVICE", "service": "example-api-dev" }
+        { "binding": "APP_SERVICE", "service": "starterkitsaas-app-dev" },
+        { "binding": "API_SERVICE", "service": "starterkitsaas-api-dev" }
       ],
       "vars": {
         "ENVIRONMENT": "development"
@@ -59,8 +62,8 @@
     // Command: bun wrangler deploy --env staging
     "staging": {
       "services": [
-        { "binding": "APP_SERVICE", "service": "example-app-staging" },
-        { "binding": "API_SERVICE", "service": "example-api-staging" }
+        { "binding": "APP_SERVICE", "service": "starterkitsaas-app-staging" },
+        { "binding": "API_SERVICE", "service": "starterkitsaas-api-staging" }
       ],
       "vars": {
         "ENVIRONMENT": "staging"

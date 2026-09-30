@@ -11,12 +11,15 @@
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "deploy": "wrangler deploy --env-file ../../.env --env-file ../../.env.local",
+    "deploy": "wrangler deploy --config dist/server/wrangler.json --env-file ../../.env --env-file ../../.env.local",
     "logs": "wrangler tail --env-file ../../.env --env-file ../../.env.local"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "^14.3.3",
     "@astrojs/react": "^6.0.5",
+    "@repo/api": "workspace:*",
     "@repo/ui": "workspace:*",
+    "@trpc/client": "^11.19.0",
     "astro": "^7.3.2",
     "hono": "^4.13.7",
     "react": "^19.3.0",

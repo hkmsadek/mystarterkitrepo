@@ -13,6 +13,7 @@ import { Route as appRouteRouteImport } from './../routes/(app)/route'
 import { Route as TodosRouteImport } from './../routes/todos'
 import { Route as appIndexRouteImport } from './../routes/(app)/index'
 import { Route as appMembersRouteImport } from './../routes/(app)/members'
+import { Route as appPostsRouteImport } from './../routes/(app)/posts'
 import { Route as appSettingsRouteImport } from './../routes/(app)/settings'
 import { Route as authLoginRouteImport } from './../routes/(auth)/login'
 import { Route as authSignupRouteImport } from './../routes/(auth)/signup'
@@ -36,6 +37,11 @@ const appMembersRoute = appMembersRouteImport.update({
   path: '/members',
   getParentRoute: () => appRouteRoute,
 } as any)
+const appPostsRoute = appPostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
+  getParentRoute: () => appRouteRoute,
+} as any)
 const appSettingsRoute = appSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -55,6 +61,7 @@ const authSignupRoute = authSignupRouteImport.update({
 export interface FileRoutesByFullPath {
   '/todos': typeof TodosRoute
   '/members': typeof appMembersRoute
+  '/posts': typeof appPostsRoute
   '/settings': typeof appSettingsRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
@@ -63,6 +70,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/todos': typeof TodosRoute
   '/members': typeof appMembersRoute
+  '/posts': typeof appPostsRoute
   '/settings': typeof appSettingsRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
@@ -73,6 +81,7 @@ export interface FileRoutesById {
   '/(app)': typeof appRouteRouteWithChildren
   '/todos': typeof TodosRoute
   '/(app)/members': typeof appMembersRoute
+  '/(app)/posts': typeof appPostsRoute
   '/(app)/settings': typeof appSettingsRoute
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
@@ -80,14 +89,17 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/todos' | '/members' | '/settings' | '/login' | '/signup' | '/'
+  fullPaths:
+    '/todos' | '/members' | '/posts' | '/settings' | '/login' | '/signup' | '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/todos' | '/members' | '/settings' | '/login' | '/signup' | '/'
+  to:
+    '/todos' | '/members' | '/posts' | '/settings' | '/login' | '/signup' | '/'
   id:
     | '__root__'
     | '/(app)'
     | '/todos'
     | '/(app)/members'
+    | '/(app)/posts'
     | '/(app)/settings'
     | '/(auth)/login'
     | '/(auth)/signup'
@@ -131,6 +143,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appMembersRouteImport
       parentRoute: typeof appRouteRoute
     }
+    '/(app)/posts': {
+      id: '/(app)/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof appPostsRouteImport
+      parentRoute: typeof appRouteRoute
+    }
     '/(app)/settings': {
       id: '/(app)/settings'
       path: '/settings'
@@ -157,12 +176,14 @@ declare module '@tanstack/react-router' {
 
 interface appRouteRouteChildren {
   appMembersRoute: typeof appMembersRoute
+  appPostsRoute: typeof appPostsRoute
   appSettingsRoute: typeof appSettingsRoute
   appIndexRoute: typeof appIndexRoute
 }
 
 const appRouteRouteChildren: appRouteRouteChildren = {
   appMembersRoute: appMembersRoute,
+  appPostsRoute: appPostsRoute,
   appSettingsRoute: appSettingsRoute,
   appIndexRoute: appIndexRoute,
 }

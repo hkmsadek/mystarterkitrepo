@@ -1,6 +1,6 @@
 ## Monorepo Structure
 
-- `apps/web/` – Astro marketing site, served by an edge worker that also routes traffic to the app/api workers via service bindings
+- `apps/web/` – Astro marketing site (prerendered pages plus on-demand pages such as `/blog`), served by an edge worker that also routes traffic to the app/api workers via service bindings
 - `apps/app/` – Main SPA (React, TanStack Router file-based routing)
 - `apps/api/` – API server (Hono + tRPC + Better Auth)
 - `apps/email/` – React Email templates (built before API dev server starts)
@@ -48,7 +48,7 @@ bun deploy:{staging,production} # Build and deploy api → app → web; no migra
 ## Architecture
 
 - Three workers: web (marketing site + edge router), app (SPA assets), api (Hono server).
-- API worker has `nodejs_compat` enabled; web and app workers do NOT.
+- API and web workers have `nodejs_compat` enabled (the web worker renders Astro on-demand pages); the app worker does NOT.
 - Web worker routes: `/api/*` → API worker, app routes → App worker, static → assets.
 - Service bindings connect workers internally (no public cross-worker URLs).
 - Per-workspace conventions live in subdirectory `AGENTS.md` files: `apps/api/`, `apps/app/`, `db/`, `infra/`, `packages/ui/`.

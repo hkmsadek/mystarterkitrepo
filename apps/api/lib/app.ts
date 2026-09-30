@@ -8,6 +8,7 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { Hono } from "hono";
 
 import { billingRouter } from "../routers/billing.js";
+import { blogRouter } from "../routers/blog.js";
 import { configRouter } from "../routers/config.js";
 import { todoRouter } from "../routers/todo.js";
 import type { AppContext } from "./context.js";
@@ -16,6 +17,7 @@ import { router } from "./trpc.js";
 // tRPC API router
 const appRouter = router({
   billing: billingRouter,
+  blog: blogRouter,
   config: configRouter,
   todo: todoRouter,
 });

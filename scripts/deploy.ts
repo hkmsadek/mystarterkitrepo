@@ -39,11 +39,15 @@ if (
 
 const skipBuild = options.includes("--skip-build");
 
-async function run(command: string[]): Promise<void> {
+async function run(
+  command: string[],
+  env: Record<string, string | undefined> = {},
+): Promise<void> {
   console.log(`\n$ ${command.map((part) => JSON.stringify(part)).join(" ")}`);
 
   const child = Bun.spawn(command, {
     cwd: repoRoot,
+    env: { ...process.env, ...env },
     stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",
@@ -53,8 +57,14 @@ async function run(command: string[]): Promise<void> {
   if (exitCode !== 0) process.exit(exitCode);
 }
 
+// The web worker is built by the Astro Cloudflare adapter, which selects the
+// Wrangler environment at build time through `CLOUDFLARE_ENV` and writes a
+// resolved config to `apps/web/dist/server/wrangler.json`. Production is the
+// top-level config, so the variable stays unset for it.
+const cloudflareEnv = environment === "production" ? undefined : environment;
+
 if (!skipBuild) {
-  await run(["bun", "run", "build"]);
+  await run(["bun", "run", "build"], { CLOUDFLARE_ENV: cloudflareEnv });
 }
 
 // Wrangler resolves `./dist` relative to each `wrangler.jsonc` and uploads an
@@ -93,11 +103,7 @@ console.log(
 // so api and app must exist before web binds to them, and web holds the only
 // public route – flipping it last moves user traffic after the workers behind
 // it are new.
-for (const config of [
-  "apps/api/wrangler.jsonc",
-  "apps/app/wrangler.jsonc",
-  "apps/web/wrangler.jsonc",
-]) {
+for (const config of ["apps/api/wrangler.jsonc", "apps/app/wrangler.jsonc"]) {
   await run([
     "bun",
     "wrangler",
@@ -108,3 +114,13 @@ for (const config of [
     wranglerEnvironment,
   ]);
 }
+
+// The generated web config is already resolved for one environment (see
+// `cloudflareEnv` above), so it takes no `--env`.
+await run([
+  "bun",
+  "wrangler",
+  "deploy",
+  "--config",
+  "apps/web/dist/server/wrangler.json",
+]);

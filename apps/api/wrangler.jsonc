@@ -3,7 +3,7 @@
 
   // [METADATA]
   // API worker accessed via service binding from web worker (no routes needed).
-  "name": "example-api",
+  "name": "starterkitsaas-api",
   "main": "./worker.ts",
   "compatibility_date": "2026-08-08",
   "compatibility_flags": ["nodejs_compat"],
@@ -20,8 +20,8 @@
   // OTP, so leaving it here means nobody but you can sign in.
   "vars": {
     "ENVIRONMENT": "production",
-    "APP_NAME": "Example",
-    "APP_ORIGIN": "https://example.com",
+    "APP_NAME": "Starterkit SaaS",
+    "APP_ORIGIN": "https://starterkitsaas-web.YOUR-SUBDOMAIN.workers.dev",
     "RESEND_EMAIL_FROM": "onboarding@resend.dev"
   },
   // oxfmt-ignore
