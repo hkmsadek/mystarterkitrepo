@@ -1,0 +1,11 @@
+{
+  "general": {
+    "preferredEditor": "vscode"
+  },
+  "context": {
+    "fileName": ["AGENTS.md", "AGENTS.local.md"],
+    "fileFiltering": {
+      "respectGitIgnore": true
+    }
+  }
+}

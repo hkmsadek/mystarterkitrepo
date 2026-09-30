@@ -1,0 +1,451 @@
+# File Uploads
+
+This recipe adds file uploads using [Cloudflare R2](https://developers.cloudflare.com/r2/) with presigned URLs. A tRPC procedure validates the request and generates a signed PUT URL, then the client uploads directly to R2 – keeping the API worker lightweight.
+
+## 1. Create the R2 bucket
+
+The edge module already has the bucket – it is just switched off. Turn it on for the environment you are working in, and list the origins allowed to upload:
+
+```hcl
+// infra/envs/staging/main.tf
+module "edge" {
+  source = "../../modules/cloudflare"
+
+  account_id           = var.cloudflare_account_id
+  project_slug         = var.project_slug
+  environment          = "staging"
+  database_url         = var.database_url
+  uploads_enabled      = true // [!code ++]
+  uploads_cors_origins = ["https://staging.example.com"] // [!code ++]
+}
+```
+
+`uploads_cors_origins` is not optional decoration. The browser uploads straight to R2, and R2 rejects a cross-origin `PUT` when the bucket has no CORS policy – however valid the presigned URL is. Terraform provisions the policy alongside the bucket, allowing `PUT` with `Content-Type` from those origins only. Reads go back through the API worker, so the browser never needs `GET` here.
+
+Apply it, and note the bucket name it prints:
+
+```bash
+bun infra:staging apply
+bun infra:staging output uploads_bucket_name
+```
+
+The Terraform API token needs **Account → Workers R2 Storage → Edit** for this.
+
+## 2. Configure bindings and secrets
+
+Bind the bucket to the API worker for serving files, and add the two non-secret values presigning needs:
+
+```jsonc
+// apps/api/wrangler.jsonc
+{
+  "env": {
+    "staging": {
+      "r2_buckets": [
+        {
+          "binding": "UPLOADS_BUCKET",
+          "bucket_name": "example-staging-uploads",
+        },
+      ],
+      "vars": {
+        "R2_S3_ENDPOINT": "https://<account-id>.r2.cloudflarestorage.com",
+        "R2_BUCKET_NAME": "example-staging-uploads",
+      },
+    },
+  },
+}
+```
+
+Repeat both blocks at the top level – the production configuration – once you enable uploads there too, with that bucket's name. The name appears twice because the binding serves files while the S3-compatible endpoint signs uploads, and signing needs the name as a string.
+
+::: tip
+
+`R2_S3_ENDPOINT` is the S3-compatible endpoint. Find it in the R2 dashboard under **Settings → S3 API**, or build it from your account ID.
+
+:::
+
+Create an [R2 API token](https://developers.cloudflare.com/r2/api/s3/tokens/) with **Object Read & Write** permission, and choose **Apply to specific buckets only** – scope it to this environment's uploads bucket alone. The token signs every presigned URL the API hands out, so its blast radius is whatever it can reach. Then add the credentials as Worker secrets:
+
+```bash
+bun wrangler secret put R2_ACCESS_KEY_ID \
+  --config apps/api/wrangler.jsonc --env staging
+bun wrangler secret put R2_SECRET_ACCESS_KEY \
+  --config apps/api/wrangler.jsonc --env staging
+```
+
+Add both names to `secrets.required` in `apps/api/wrangler.jsonc` so a deploy that forgets them fails immediately instead of returning errors at runtime – but only in the environments where you actually enabled uploads. `secrets.required` is not inherited, so each environment block lists its own; adding them to production while uploads are staging-only would make production undeployable until you provisioned credentials for a bucket that does not exist. Leave `dev` alone either way, since a populated `secrets.required` limits local `.env` loading to exactly the keys it lists.
+
+Add the binding type in `apps/api/worker.ts`:
+
+```ts
+type CloudflareEnv = {
+  HYPERDRIVE_CACHED: Hyperdrive;
+  HYPERDRIVE_UNCACHED: Hyperdrive;
+  // Optional: the binding only exists where uploads are enabled, and the
+  // handlers below check for it. Declaring it required would type-check a
+  // deployment that cannot work.
+  UPLOADS_BUCKET?: R2Bucket; // [!code ++]
+} & Env;
+```
+
+Add the S3 API credentials to the env schema in `apps/api/lib/env.ts`:
+
+```ts
+export const envSchema = z.object({
+  // ...existing vars
+  R2_ACCESS_KEY_ID: z.string().optional(), // [!code ++]
+  R2_SECRET_ACCESS_KEY: z.string().optional(), // [!code ++]
+  R2_S3_ENDPOINT: z.url().optional(), // [!code ++]
+  R2_BUCKET_NAME: z.string().optional(), // [!code ++]
+});
+```
+
+Install [`aws4fetch`](https://github.com/mhart/aws4fetch) for signing presigned URLs in Workers:
+
+```bash
+bun add --filter @repo/api aws4fetch
+```
+
+## 3. Create the upload procedure
+
+The allowlist is enforced on the server but the file picker and the client call have to agree with it, so put it in `@repo/core` where both sides import the same list:
+
+```ts
+// packages/core/uploads.ts
+export const UPLOAD_CONTENT_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+] as const;
+
+export type UploadContentType = (typeof UPLOAD_CONTENT_TYPES)[number];
+
+/** Value for `<input type="file" accept>`, so the picker offers exactly what the API accepts. */
+export const UPLOAD_ACCEPT = UPLOAD_CONTENT_TYPES.join(",");
+
+export const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+export function isUploadContentType(value: string): value is UploadContentType {
+  return (UPLOAD_CONTENT_TYPES as readonly string[]).includes(value);
+}
+```
+
+Re-export it from the package entrypoint:
+
+```ts
+// packages/core/index.ts
+export * from "./uploads.js"; // [!code ++]
+```
+
+Plain constants rather than a Zod schema: this file is imported by the browser bundle, and the API turns the same list into `z.enum(...)` at the boundary where validation belongs.
+
+Then add a router that generates presigned PUT URLs and confirms uploads:
+
+```ts
+// apps/api/routers/upload.ts
+import { AwsClient } from "aws4fetch";
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+import {
+  MAX_UPLOAD_SIZE_BYTES,
+  UPLOAD_CONTENT_TYPES,
+  type UploadContentType,
+} from "@repo/core";
+import { protectedProcedure, router } from "../lib/trpc.js";
+
+// The enum is the allowlist, so the extension lookup is total and the parsed
+// type narrows to these four keys. The extension never comes from the filename.
+const contentTypeSchema = z.enum(UPLOAD_CONTENT_TYPES);
+
+const EXTENSION_BY_CONTENT_TYPE = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "application/pdf": "pdf",
+} satisfies Record<UploadContentType, string>;
+
+const UPLOAD_URL_TTL_SECONDS = 120; // see the note on reuse below
+
+export const uploadRouter = router({
+  /** Generate a presigned PUT URL for direct client-to-R2 upload. */
+  createUrl: protectedProcedure
+    .input(
+      z.object({
+        contentType: contentTypeSchema,
+        // `File.size` is a byte count: reject fractions and negatives that
+        // `z.number()` alone would accept.
+        sizeBytes: z.number().int().nonnegative().max(MAX_UPLOAD_SIZE_BYTES),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const {
+        R2_ACCESS_KEY_ID,
+        R2_SECRET_ACCESS_KEY,
+        R2_S3_ENDPOINT,
+        R2_BUCKET_NAME,
+      } = ctx.env;
+
+      if (
+        !R2_ACCESS_KEY_ID ||
+        !R2_SECRET_ACCESS_KEY ||
+        !R2_S3_ENDPOINT ||
+        !R2_BUCKET_NAME
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "File uploads are not configured",
+        });
+      }
+
+      // Namespace by organization, falling back to the user when none is
+      // active – the same rule as `billing.ts`. Prefixed IDs (`org_…`, `usr_…`)
+      // cannot collide. Interpolating a nullable value here would put every
+      // org-less user under a shared `undefined/` prefix.
+      const ownerId = ctx.session.activeOrganizationId ?? ctx.user.id;
+
+      // Built entirely from values the server controls. Never interpolate a
+      // client-supplied filename here – see the warning below.
+      const key = `${ownerId}/${crypto.randomUUID()}.${EXTENSION_BY_CONTENT_TYPE[input.contentType]}`;
+
+      const r2 = new AwsClient({
+        service: "s3", // R2's S3 API: the service is `s3`, the region `auto`
+        region: "auto",
+        accessKeyId: R2_ACCESS_KEY_ID,
+        secretAccessKey: R2_SECRET_ACCESS_KEY,
+      });
+
+      const url = new URL(`${R2_S3_ENDPOINT}/${R2_BUCKET_NAME}/${key}`);
+      url.searchParams.set("X-Amz-Expires", String(UPLOAD_URL_TTL_SECONDS));
+
+      const signed = await r2.sign(
+        new Request(url, {
+          method: "PUT",
+          headers: { "Content-Type": input.contentType },
+        }),
+        { aws: { signQuery: true } },
+      );
+
+      return { key, uploadUrl: signed.url };
+    }),
+
+  /** Verify the stored object and return its metadata. */
+  confirm: protectedProcedure
+    .input(z.object({ key: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const uploads = (ctx.env as { UPLOADS_BUCKET?: R2Bucket }).UPLOADS_BUCKET;
+      if (!uploads) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "R2 binding not configured",
+        });
+      }
+
+      // The key arrives from the client, so re-derive who may claim it.
+      // Without this, any signed-in user who learns a key can read its size.
+      const ownerId = ctx.session.activeOrganizationId ?? ctx.user.id;
+      if (!input.key.startsWith(`${ownerId}/`)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const object = await uploads.head(input.key);
+      if (!object) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Object not found" });
+      }
+
+      // `sizeBytes` in createUrl was the browser's claim; a presigned PUT signs
+      // the method, key and content type, never the body length. Reject an
+      // oversized object and reclaim its space.
+      if (object.size > MAX_UPLOAD_SIZE_BYTES) {
+        await uploads.delete(input.key);
+        throw new TRPCError({
+          code: "PAYLOAD_TOO_LARGE",
+          message: "File exceeds the 10 MB limit",
+        });
+      }
+
+      return { key: input.key, sizeBytes: object.size };
+    }),
+});
+```
+
+::: danger Never build the key from the filename
+
+An earlier version of this recipe used `` `${ownerId}/${uuid}/${input.filename}` ``. That is exploitable: `filename` is client input, and the `URL` constructor resolves `..` segments before the request is signed.
+
+```txt
+filename = "../../org_victim/steal.png"
+  → signed PUT for  /my-bucket/org_victim/steal.png
+
+filename = "../../../other-bucket/evil.jpg"
+  → signed PUT for  /other-bucket/evil.jpg
+```
+
+The second escapes the bucket entirely, reaching anything the R2 token can write. Deriving the extension from the allowlisted `contentType` removes the problem at the source rather than relying on sanitising filenames. Keep the original name in your own table alongside the key, where it is data rather than an identifier – which is why `createUrl` does not take a `filename` at all.
+
+:::
+
+::: warning What the presigned URL does not enforce
+
+`MAX_UPLOAD_SIZE_BYTES` is **not** a hard storage limit. A presigned URL is a bearer token, valid until it expires and reusable within that window, and the signature covers the method, key and `Content-Type` but never the body length. An authenticated caller can request a URL claiming `sizeBytes: 1`, upload a gigabyte, and simply never call `confirm` – or let `confirm` delete it and re-`PUT` with the same URL.
+
+What the checks above do give you: only signed-in users get URLs, `confirm` rejects an oversized object and reclaims its space, and the short `UPLOAD_URL_TTL_SECONDS` keeps the reuse window small. Note that `confirm` records nothing – it reads the object back and returns its metadata, so the serving route below hands over any correctly namespaced object whether or not it was ever confirmed. Persisting an upload record is left to you.
+
+Abandoned objects are not cleaned up either: completed and abandoned uploads share the same `<owner>/<uuid>.<ext>` shape, so no lifecycle rule can tell them apart. If you want automatic cleanup, track upload state in your database and sweep objects that were never confirmed, or write pending uploads under a separate prefix that a lifecycle rule can expire.
+
+The allowlisted `Content-Type` is also still a browser claim; this recipe does not inspect file bytes. That is why the serving route below hands everything back as an attachment rather than echoing the stored type. To render uploads inline instead – previewing an image, embedding a PDF – verify signatures with a format-aware library first, store the type you verified, and serve only that. Keep unverified content on a separate origin when possible.
+
+If you need the limit to be genuinely hard, stop presigning and stream the upload through the API worker into its `UPLOADS_BUCKET` binding, rejecting the body past 10 MB. You lose the direct-to-R2 path but gain an enforceable ceiling – a reasonable trade at this file size.
+
+:::
+
+Register it in `apps/api/lib/app.ts`:
+
+```ts
+import { uploadRouter } from "../routers/upload.js";
+
+const appRouter = router({
+  // ...existing routers
+  upload: uploadRouter, // [!code ++]
+});
+```
+
+## 4. Upload from the frontend
+
+```tsx
+import { isUploadContentType } from "@repo/core";
+import { trpcClient } from "#lib/trpc";
+
+async function uploadFile(file: File) {
+  // `File.type` is an unvalidated `string` – and empty when the browser cannot
+  // guess the type. Narrow it here so the mutation typechecks and the user gets
+  // a real message instead of a rejected round-trip.
+  if (!isUploadContentType(file.type)) {
+    throw new Error(`Unsupported file type: ${file.type || "unknown"}`);
+  }
+
+  // 1. Get a presigned URL from the API
+  const { key, uploadUrl } = await trpcClient.upload.createUrl.mutate({
+    contentType: file.type,
+    sizeBytes: file.size,
+  });
+
+  // 2. Upload directly to R2
+  const res = await fetch(uploadUrl, {
+    method: "PUT",
+    body: file,
+    headers: { "Content-Type": file.type },
+  });
+
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+
+  // 3. Verify the stored object and get its metadata
+  return trpcClient.upload.confirm.mutate({ key });
+}
+```
+
+Wire it to a file input:
+
+```tsx
+import { UPLOAD_ACCEPT } from "@repo/core";
+
+function FileUpload() {
+  async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const result = await uploadFile(file);
+    console.log("Uploaded:", result.key);
+  }
+
+  return <input type="file" accept={UPLOAD_ACCEPT} onChange={handleChange} />;
+}
+```
+
+`accept` is a picker filter, not a check – it is trivially bypassed, and the server allowlist is what enforces the rule. Deriving it from the same constant just stops the dialog from offering files the API will reject.
+
+## 5. Serve files
+
+Add a Hono route that reads from R2 via the binding. Uploads are **private by default** here: keys are organization-scoped, so serving them must be too.
+
+```ts
+// apps/api/routes/uploads.ts
+import { Hono } from "hono";
+import type { AppContext } from "../lib/context.js";
+
+const uploads = new Hono<AppContext>();
+
+uploads.get("/api/uploads/:key{.+}", async (c) => {
+  const bucket = (c.env as { UPLOADS_BUCKET?: R2Bucket }).UPLOADS_BUCKET;
+  if (!bucket) return c.json({ error: "R2 not configured" }, 503);
+
+  const auth = c.get("auth");
+  const session = await auth?.api.getSession({ headers: c.req.raw.headers });
+  if (!session) return c.json({ error: "Unauthorized" }, 401);
+
+  // Scope the read to the caller. 404 rather than 403 – a 403 would confirm
+  // the key exists to someone who only guessed it.
+  const ownerId = session.session.activeOrganizationId ?? session.user.id;
+  const key = c.req.param("key");
+  if (!key.startsWith(`${ownerId}/`)) {
+    return c.notFound();
+  }
+
+  const object = await bucket.get(key);
+  if (!object) return c.notFound();
+
+  return new Response(object.body, {
+    headers: {
+      // Downloads, not inline rendering. The stored `Content-Type` is whatever
+      // the uploader claimed and nothing here has read the bytes, so serving it
+      // back would let a file that passed the allowlist as an image render as
+      // HTML on your origin. `attachment` plus `nosniff` keeps the browser from
+      // deciding otherwise. Serve verified metadata inline only after checking
+      // signatures – see the note above.
+      "Content-Type": "application/octet-stream",
+      "Content-Disposition": "attachment",
+      "X-Content-Type-Options": "nosniff",
+      // Whether this URL may be served depends on who is asking, so the
+      // browser must ask again every time: `no-cache` still lets it store the
+      // response, but never reuse one without revalidating, which re-runs the
+      // check above. A long max-age would instead let a shared browser replay
+      // the file to the next person to sign in. Use `no-store` if the files
+      // are sensitive enough that they should not touch disk at all.
+      "Cache-Control": "private, no-cache",
+    },
+  });
+});
+
+export { uploads };
+```
+
+Mount it in `apps/api/lib/app.ts`:
+
+```ts
+import { uploads } from "../routes/uploads.js";
+
+app.route("/", uploads); // [!code ++]
+```
+
+Files are served at `/api/uploads/<key>`.
+
+::: tip Serving public assets instead
+
+For genuinely public files – avatars, logos, marketing images – drop the session check and use `Cache-Control: public, max-age=31536000, immutable`. Once the response no longer depends on who asked, a long-lived cache is safe again.
+
+These are also the files you actually want rendered inline rather than downloaded, which means dropping the `attachment` disposition. Do that only once the route serves a type it verified from the bytes, not the one the uploader claimed – on a public URL the stored claim is exactly what an attacker controls.
+
+That header buys you browser caching only. The API worker sets no `cache` block, so Cloudflare does not cache its responses at the edge and every request still runs the worker. Do not switch caching on for the whole API to change that – with it enabled, a `200` carrying no `Cache-Control` picks up a two-hour heuristic TTL, which is the wrong default for tRPC and auth.
+
+To skip the worker entirely, an [R2 custom domain](https://developers.cloudflare.com/r2/buckets/public-buckets/) serves objects straight from the bucket. Use it only for a bucket whose **entire contents** are public: public access is a bucket-level switch with no per-prefix rules, so attaching a domain to the `-uploads` bucket above would publish every user's private files along with the avatars. Give public assets their own bucket.
+
+Serving a public prefix out of a mixed bucket means keeping the worker and dropping only the session check for that prefix. Either way, do not treat an unguessable key as the authorization mechanism – that works until a URL is pasted into a support ticket or leaks through a `Referer` header.
+
+:::
+
+## Reference
+
+- [Cloudflare R2 docs](https://developers.cloudflare.com/r2/) – bucket API, S3 compatibility, pricing
+- [R2 S3 API tokens](https://developers.cloudflare.com/r2/api/s3/tokens/) – creating API credentials
+- [aws4fetch](https://github.com/mhart/aws4fetch) – lightweight AWS Signature V4 for Workers
+- [Security Checklist](/security/checklist) – file upload validation (type, size, content)
+- [Add a tRPC Procedure](/recipes/new-procedure) – procedure patterns

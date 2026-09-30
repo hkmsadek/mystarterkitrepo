@@ -1,0 +1,25 @@
+{
+  "extends": "../packages/typescript-config/node.jsonc",
+  "compilerOptions": {
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "composite": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./dist",
+    "types": ["bun", "node"]
+  },
+  "include": [
+    "schema/**/*.ts",
+    "seeds/**/*.ts",
+    "scripts/**/*.ts",
+    "*.ts",
+    "*.json"
+  ],
+  // This script imports API auth code and Better Auth directly, crossing the
+  // database workspace's dependency boundary.
+  "exclude": [
+    "**/dist/**/*",
+    "**/node_modules/**/*",
+    "scripts/generate-auth-schema.ts"
+  ]
+}

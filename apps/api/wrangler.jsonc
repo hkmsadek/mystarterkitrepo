@@ -1,0 +1,89 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+
+  // [METADATA]
+  // API worker accessed via service binding from web worker (no routes needed).
+  "name": "example-api",
+  "main": "./worker.ts",
+  "compatibility_date": "2026-08-08",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "upload_source_maps": true,
+  "observability": { "enabled": true },
+
+  // [ENV:PRODUCTION]
+  // Command: bun wrangler deploy --env=""
+  //
+  // Replace RESEND_EMAIL_FROM before going live. `onboarding@resend.dev` is
+  // Resend's shared testing sender: it can only deliver to the address that
+  // owns the API key, and every other recipient gets a 403. Sign-in is email
+  // OTP, so leaving it here means nobody but you can sign in.
+  "vars": {
+    "ENVIRONMENT": "production",
+    "APP_NAME": "Example",
+    "APP_ORIGIN": "https://example.com",
+    "RESEND_EMAIL_FROM": "onboarding@resend.dev"
+  },
+  // oxfmt-ignore
+  "hyperdrive": [
+    { "binding": "HYPERDRIVE_CACHED", "id": "your-hyperdrive-cached-id-here" },
+    { "binding": "HYPERDRIVE_UNCACHED", "id": "your-hyperdrive-uncached-id-here" }
+  ],
+  // Deploy fails fast when one of these is unset. Values live in Cloudflare
+  // (`wrangler secret put`); only the required-name contract is versioned.
+  //
+  // Only genuinely mandatory secrets belong here: listing an optional
+  // integration would block deploys for anyone not using it. Google and Stripe
+  // are gated at their feature boundaries instead – see `lib/env.ts`.
+  //
+  // Not inheritable, so every environment repeats it. In `dev` it also tells
+  // Wrangler which keys to read from `process.env`; optional integrations reach
+  // the local server through the env overlay in `dev.ts` instead.
+  "secrets": {
+    "required": ["BETTER_AUTH_SECRET", "RESEND_API_KEY"]
+  },
+
+  "env": {
+    // [ENV:DEVELOPMENT]
+    // Command: bun dev (apps/api/dev.ts selects this env via getPlatformProxy)
+    //
+    // Local development provisions nothing: the IDs below are placeholders that
+    // Wrangler never resolves. Point the bindings at any Postgres instance with
+    // CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE_{CACHED,UNCACHED}.
+    "dev": {
+      "vars": {
+        "ENVIRONMENT": "development",
+        "APP_NAME": "Example",
+        "APP_ORIGIN": "http://localhost:5173",
+        "RESEND_EMAIL_FROM": "onboarding@resend.dev"
+      },
+      // oxfmt-ignore
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE_CACHED", "id": "local-dev-placeholder" },
+        { "binding": "HYPERDRIVE_UNCACHED", "id": "local-dev-placeholder" }
+      ],
+      "secrets": {
+        "required": ["BETTER_AUTH_SECRET", "RESEND_API_KEY"]
+      }
+    },
+
+    // [ENV:STAGING]
+    // Command: bun wrangler deploy --env staging
+    "staging": {
+      "vars": {
+        "ENVIRONMENT": "staging",
+        "APP_NAME": "Example",
+        "APP_ORIGIN": "https://staging.example.com",
+        "RESEND_EMAIL_FROM": "onboarding@resend.dev"
+      },
+      // oxfmt-ignore
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE_CACHED", "id": "your-staging-hyperdrive-cached-id-here" },
+        { "binding": "HYPERDRIVE_UNCACHED", "id": "your-staging-hyperdrive-uncached-id-here" }
+      ],
+      "secrets": {
+        "required": ["BETTER_AUTH_SECRET", "RESEND_API_KEY"]
+      }
+    }
+  }
+}

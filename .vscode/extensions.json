@@ -1,0 +1,19 @@
+{
+  "recommendations": [
+    "anthropic.claude-code",
+    "astro-build.astro-vscode",
+    "bradlc.vscode-tailwindcss",
+    "dbcode.dbcode",
+    "editorconfig.editorconfig",
+    "github.copilot",
+    "github.vscode-github-actions",
+    "hashicorp.terraform",
+    "mikestead.dotenv",
+    "oven.bun-vscode",
+    "oxc.oxc-vscode",
+    "rphlmr.vscode-drizzle-orm",
+    "streetsidesoftware.code-spell-checker",
+    "typescriptteam.native-preview",
+    "vscode-icons-team.vscode-icons"
+  ]
+}

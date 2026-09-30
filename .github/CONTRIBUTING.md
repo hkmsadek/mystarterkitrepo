@@ -1,0 +1,151 @@
+# Contributing to React Starter Kit
+
+Thank you for your interest in contributing! Whether you're fixing bugs, improving documentation, or proposing new features — we appreciate your efforts.
+
+## Code of Conduct
+
+All contributors are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Your First Contribution
+
+Look for issues labeled [`good first issue`](https://github.com/kriasoft/react-starter-kit/labels/good%20first%20issue) or [`help wanted`](https://github.com/kriasoft/react-starter-kit/labels/help%20wanted).
+
+Before starting work on a significant change, open an issue to discuss your proposal and wait for feedback from maintainers.
+
+## Development Setup
+
+### Prerequisites
+
+- [Bun](https://bun.sh) >= 1.4.0
+- [Node.js](https://nodejs.org) >= 20 (for some tooling)
+- [Git](https://git-scm.com)
+
+### Getting Started
+
+1. Fork and clone the repository:
+
+   ```bash
+   git clone https://github.com/<your-username>/react-starter-kit.git
+   cd react-starter-kit
+   git remote add upstream https://github.com/kriasoft/react-starter-kit.git
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   bun install
+   ```
+
+3. Start the development server:
+
+   ```bash
+   bun dev                # Start all apps (web + api + app)
+
+   # Or individually:
+   bun web:dev            # Marketing site
+   bun app:dev            # Main application
+   bun api:dev            # API server
+   ```
+
+4. Verify your setup:
+
+   ```bash
+   bun run test --run     # Run tests (Vitest)
+   bun lint               # Oxlint
+   bun run format:check   # Oxfmt
+   bun typecheck          # TypeScript
+   ```
+
+### Project Structure
+
+See [`AGENTS.md`](../AGENTS.md) for the full monorepo layout, tech stack, and available commands.
+
+### Database schema changes
+
+This repository keeps a single squashed migration, so a schema change regenerates `db/migrations/0000_init.sql` rather than adding to it. Plain `bun db:generate` would append `0001_*` against the existing snapshot, so:
+
+```bash
+# from db/migrations/meta/_journal.json, note the entry's `when` value,
+# then set "entries" to []
+rm db/migrations/0000_init.sql db/migrations/meta/0000_snapshot.json
+bun db:generate --name init
+# restore the original `when` so the entry keeps its identity
+```
+
+`meta/0000_snapshot.json` must keep top-level `"version": "7"`. At `"1"` drizzle-kit reports `data is malformed`, writes nothing, and `bun db:check` exits non-zero — a silent no-op that is easy to miss. The journal entry's own `version` is not read.
+
+This convention is specific to the starter kit. A project generated from it should follow [`docs/database/migrations.md`](../docs/database/migrations.md) and never edit an applied migration.
+
+## Pull Request Process
+
+1. **Create a feature branch** from `main`:
+
+   ```bash
+   git checkout main
+   git pull upstream main
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Make focused changes** — one PR per concern. Follow existing patterns in the codebase.
+
+3. **Verify before pushing:**
+
+   ```bash
+   bun run test --run && bun lint && bun run format:check && bun typecheck
+   ```
+
+4. **Write clear commit messages** using [conventional commits](https://www.conventionalcommits.org/):
+
+   ```
+   type: description
+   type(scope): description
+   ```
+
+   The scope is optional. [`pr-title.yml`](workflows/pr-title.yml) lists the accepted types.
+
+5. **Open a pull request** against `main` with a clear description. Reference related issues and include screenshots for UI changes. Give the pull request a title in the same form – CI validates that one, and it is what a squash merge records on `main`.
+
+### Review Process
+
+- Maintainers will review your PR within a few days
+- Address requested changes promptly
+- Keep your branch up to date with `main`
+
+## Coding Standards
+
+- Use functional components and hooks
+- Prefer named exports over default exports
+- Use TypeScript strict mode — avoid `any` and unnecessary type assertions
+- Write tests for new features (Vitest)
+- Prefer explicit, readable code over clever patterns
+- See [`AGENTS.md`](../AGENTS.md) for the full design philosophy
+
+## Developer Certificate of Origin (DCO)
+
+This project uses the [Developer Certificate of Origin](https://developercertificate.org/) (DCO) version 1.1.
+
+By contributing, you certify that you wrote the contribution yourself (or have the right to submit it) and agree to license it under the [MIT License](../LICENSE).
+
+All commits must include a sign-off line:
+
+```bash
+git commit -s -m "feat(auth): add passkey support"
+```
+
+Nothing in this repository checks for it – install GitHub's [DCO app](https://github.com/apps/dco) and make its status required if you want it enforced – so until then a maintainer may ask you to amend a commit that is missing the line.
+
+## AI-Assisted Contributions
+
+AI tools may be used to help produce contributions. By submitting, you certify that you have reviewed and understand the code and that it does not include material you lack the right to submit under the MIT License.
+
+The use of AI tools does not change the DCO requirements. The contributor remains the author of record and is responsible for the contribution.
+
+## Getting Help
+
+- **Discord** — [Community server](https://discord.gg/2nKEnKq)
+- **GitHub Issues** — Bug reports and feature requests
+- **GitHub Discussions** — Questions and community discussions
+
+---
+
+By contributing, you agree that your contributions will be licensed under the [MIT License](../LICENSE).

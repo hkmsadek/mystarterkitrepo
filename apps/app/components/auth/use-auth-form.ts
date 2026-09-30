@@ -1,0 +1,134 @@
+import type { SubmitEvent } from "react";
+import { useCallback, useRef, useState } from "react";
+
+import { auth } from "#lib/auth";
+
+type AuthStep = "method" | "email" | "otp";
+
+// Minimal state machine for passwordless OTP flow. Intentionally shallow:
+// - Errors are orthogonal to steps (can occur at any step)
+// - No terminal state (component unmounts on success)
+// Revisit if adding password fallback or MFA steps.
+const VALID_TRANSITIONS: Record<AuthStep, AuthStep[]> = {
+  method: ["email"],
+  email: ["method", "otp"],
+  otp: ["email"],
+};
+
+interface UseAuthFormOptions {
+  /**
+   * Called after successful authentication. Caller is responsible for
+   * cache invalidation and navigation. Awaited before form state resets.
+   */
+  onSuccess: () => Promise<void>;
+  /** Copy and passkey availability. Both modes run the same OTP flow. */
+  mode?: "login" | "signup";
+}
+
+export function useAuthForm({ onSuccess, mode = "login" }: UseAuthFormOptions) {
+  const [step, setStep] = useState<AuthStep>("method");
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  // Counter-based to handle overlapping child operations (e.g., rapid double-click)
+  const [pendingOps, setPendingOps] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  // Post-auth work runs once per form. Disabling is state-backed and therefore
+  // not synchronous, so two completions can still land before React rerenders.
+  const hasSucceededRef = useRef(false);
+  // Track child loading via counter to correctly handle overlapping operations
+  const setChildBusy = useCallback((busy: boolean) => {
+    setPendingOps((c) => (busy ? c + 1 : Math.max(0, c - 1)));
+  }, []);
+
+  // Unified busy state: disables navigation and other auth methods while any flow is active
+  const isDisabled = isLoading || pendingOps > 0;
+
+  const onAuthSuccess = async () => {
+    if (hasSucceededRef.current) return;
+    hasSucceededRef.current = true;
+
+    try {
+      setIsLoading(true);
+      await onSuccess();
+    } catch (err) {
+      console.error("Post-auth error:", err);
+      setError("Something went wrong. Please try again.");
+      hasSucceededRef.current = false; // Allow retry on error
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Validates transitions to prevent invalid step jumps.
+  // Returning to "method" resets the success guard to allow fresh auth attempts.
+  const transitionTo = (next: AuthStep, clearErr = true) => {
+    if (!VALID_TRANSITIONS[step].includes(next)) {
+      return;
+    }
+    if (next === "method") {
+      hasSucceededRef.current = false;
+    }
+    setStep(next);
+    if (clearErr) setError(null);
+  };
+
+  const goToEmailStep = () => transitionTo("email");
+  const goToMethodStep = () => transitionTo("method");
+  // Go back to email step, preserving error message
+  const resetToEmail = () => transitionTo("email", false);
+
+  const sendOtp = async (e?: SubmitEvent) => {
+    e?.preventDefault();
+
+    // Normalize before auth calls to prevent case/whitespace mismatches
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return;
+    setEmail(normalizedEmail);
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // "sign-in" type handles both login and signup (creates user if needed)
+      const result = await auth.emailOtp.sendVerificationOtp({
+        email: normalizedEmail,
+        type: "sign-in",
+      });
+
+      if (result.data) {
+        transitionTo("otp");
+      } else if (result.error) {
+        setError(result.error.message || "Failed to send OTP");
+      }
+    } catch (err) {
+      console.error("Email OTP error:", err);
+      setError("Failed to send verification code");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const changeEmail = (value: string) => {
+    setEmail(value);
+  };
+
+  return {
+    // State
+    step,
+    email,
+    isDisabled,
+    error,
+    mode,
+
+    // Actions
+    changeEmail,
+    onAuthSuccess,
+    setError,
+    sendOtp,
+    goToEmailStep,
+    goToMethodStep,
+    resetToEmail,
+    setChildBusy,
+  };
+}

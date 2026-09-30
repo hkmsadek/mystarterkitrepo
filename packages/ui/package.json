@@ -1,0 +1,51 @@
+{
+  "name": "@repo/ui",
+  "version": "0.1.0",
+  "description": "Reusable UI components for React Starter Kit (monorepo)",
+  "license": "MIT",
+  "files": [
+    "components",
+    "hooks",
+    "lib",
+    "index.ts",
+    "components.json"
+  ],
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "imports": {
+    "#components/*": "./components/*.tsx",
+    "#hooks/*": "./hooks/*.ts",
+    "#lib/*": "./lib/*.ts"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./lib/utils": "./lib/utils.ts",
+    "./components/*": "./components/*.tsx",
+    "./hooks/*": "./hooks/*.ts",
+    "./lib/*": "./lib/*.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "add": "bun scripts/add.ts",
+    "update": "bun scripts/update.ts"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.44.0",
+    "radix-ui": "^1.6.7",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~7.0.2"
+  },
+  "peerDependencies": {
+    "react": ">=19.2.4",
+    "react-dom": ">=19.2.4"
+  }
+}

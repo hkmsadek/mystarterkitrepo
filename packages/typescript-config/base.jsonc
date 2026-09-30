@@ -1,0 +1,49 @@
+{
+  /* Visit https://aka.ms/tsconfig to read more about this file */
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    /* Type Checking */
+    "strict": true,
+    // Not implied by `strict`.
+    "noImplicitOverride": true,
+
+    /* Modules */
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    // TypeScript 7 removed `baseUrl`. `paths` resolve relative to the config
+    // that declares them, so "../../" anchors these at the repository root.
+    "paths": {
+      "@repo/api": ["../../apps/api"],
+      "@repo/api/*": ["../../apps/api/*"],
+      "@repo/core": ["../../packages/core"],
+      "@repo/core/*": ["../../packages/core/*"],
+      "@repo/db": ["../../db"],
+      "@repo/db/*": ["../../db/*"],
+      "@repo/ws-protocol": ["../../packages/ws-protocol"],
+      "@repo/ws-protocol/*": ["../../packages/ws-protocol/*"]
+    },
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": false,
+
+    /* Emit */
+    // noEmit is set per-package based on needs
+
+    /* JavaScript Support */
+    "allowJs": true,
+
+    /* Interop Constraints */
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+
+    /* Language and Environment */
+    "target": "ESNext",
+    "lib": ["ESNext"],
+    "useDefineForClassFields": true,
+
+    /* Completeness */
+    "skipLibCheck": true
+  }
+}

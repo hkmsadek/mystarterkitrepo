@@ -1,0 +1,116 @@
+{
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "editor.formatOnSave": true,
+  "editor.quickSuggestions": {
+    "strings": "on"
+  },
+  "editor.tabSize": 2,
+  "[terraform]": {
+    "editor.defaultFormatter": "hashicorp.terraform",
+    "editor.formatOnSave": true
+  },
+  "[astro]": {
+    "editor.defaultFormatter": "astro-build.astro-vscode"
+  },
+  "js/ts.experimental.useTsgo": true,
+  "js/ts.tsdk.path": "./node_modules/typescript",
+  "vitest.commandLine": "bun run vitest",
+  "files.associations": {
+    ".env.*.local": "properties",
+    ".env.*": "properties",
+    "*.css": "tailwindcss"
+  },
+  "files.exclude": {
+    "**/.cache": true,
+    "**/.DS_Store": true,
+    "**/.editorconfig": true,
+    "**/.git": true,
+    "**/.gitattributes": true,
+    "**/.husky": true,
+    "**/.pnp.*": true,
+    "**/node_modules": true,
+    "**/bun.lock": true
+  },
+  "files.readonlyInclude": {
+    "**/routeTree.gen.ts": true
+  },
+  "files.watcherExclude": {
+    "**/routeTree.gen.ts": true
+  },
+  "search.exclude": {
+    "**/dist/": true,
+    "**/node_modules/": true,
+    "**/bun.lock": true,
+    "**/routeTree.gen.ts": true
+  },
+  "tailwindCSS.experimental.classRegex": [
+    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*)[\"'`]"],
+    ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*)[\"'`]"]
+  ],
+  "terminal.integrated.env.linux": {
+    "CACHE_DIR": "${workspaceFolder}/.cache"
+  },
+  "terminal.integrated.env.osx": {
+    "CACHE_DIR": "${workspaceFolder}/.cache"
+  },
+  "terminal.integrated.env.windows": {
+    "CACHE_DIR": "${workspaceFolder}\\.cache"
+  },
+  "cSpell.ignoreWords": [
+    "browserslist",
+    "bunx",
+    "cloudfunctions",
+    "corejs",
+    "corepack",
+    "endregion",
+    "entrypoint",
+    "envalid",
+    "esmodules",
+    "esnext",
+    "execa",
+    "firestore",
+    "globby",
+    "hono",
+    "hyperdrive",
+    "identitytoolkit",
+    "jamstack",
+    "koistya",
+    "konstantin",
+    "kriasoft",
+    "llms",
+    "localforage",
+    "miniflare",
+    "neondatabase",
+    "nodenext",
+    "notistack",
+    "oidc",
+    "openai",
+    "oxfmt",
+    "oxfmtrc",
+    "oxlint",
+    "oxlintrc",
+    "pathinfo",
+    "pino",
+    "pnpify",
+    "reactstarter",
+    "refetch",
+    "refetchable",
+    "relyingparty",
+    "signup",
+    "sourcemap",
+    "srcpack",
+    "swapi",
+    "tanstack",
+    "tarkus",
+    "tfbackend",
+    "tfstate",
+    "tfvars",
+    "trpc",
+    "tslib",
+    "typechecking",
+    "vite",
+    "vitepress",
+    "vitest",
+    "webflow"
+  ]
+}
