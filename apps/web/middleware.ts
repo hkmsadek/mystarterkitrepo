@@ -33,7 +33,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // the cache or leak into it.
   const key = new Request(context.url.toString(), { method: "GET" });
 
-  const hit = await cache.match(key);
+  // Best effort: a cache that cannot be read or written must never turn
+  // into an error page. Some deployments restrict the Cache API (it is a
+  // no-op on workers.dev and unavailable to some dispatched scripts).
+  let hit: Response | undefined;
+  try {
+    hit = await cache.match(key);
+  } catch (error) {
+    console.warn("edge cache read failed", error);
+  }
   if (hit) {
     const response = new Response(hit.body, hit);
     response.headers.set(CACHE_HEADER, "hit");
@@ -56,7 +64,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     `${cacheControl}, s-maxage=300, stale-while-revalidate=60`,
   );
 
-  const put = cache.put(key, stored);
+  const put = cache.put(key, stored).catch((error: unknown) => {
+    console.warn("edge cache write failed", error);
+  });
   context.locals.cfContext?.waitUntil(put);
 
   response.headers.set(CACHE_HEADER, "miss");
