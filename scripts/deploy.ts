@@ -272,8 +272,10 @@ await run([
   "--config",
   configPath,
   ...(namespace ? ["--dispatch-namespace", namespace] : []),
+  // Outside dist/server: the generated config uploads every module under its
+  // own directory, so a dry-run output left there would ship next time.
   ...(dryRun
-    ? ["--dry-run", "--outdir", resolve(serverDir, `dry-run-${scriptName}`)]
+    ? ["--dry-run", "--outdir", resolve(serverDir, `../dry-run-${scriptName}`)]
     : []),
 ]);
 
