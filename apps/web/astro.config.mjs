@@ -17,16 +17,6 @@ if (process.argv.includes("dev")) {
   }
 }
 
-// Prerendering also runs the worker in workerd, and Wrangler refuses to start
-// it without a local origin for every Hyperdrive binding. Prerendered pages
-// never open a connection, so any well-formed URL will do when the root .env
-// does not provide one (CI, or a laptop without a local Postgres).
-for (const binding of ["HYPERDRIVE_CACHED", "HYPERDRIVE_UNCACHED"]) {
-  const key = `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_${binding}`;
-  process.env[key] ??=
-    env[key] || "postgres://prerender:prerender@localhost:5432/prerender";
-}
-
 export default defineConfig({
   // The edge worker serves marketing, app, and API routes on one public origin.
   site: env.APP_ORIGIN,

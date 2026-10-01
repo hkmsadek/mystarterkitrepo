@@ -50,7 +50,8 @@ bun deploy:{staging,production} # Build and deploy the worker; no migrations
 - One worker (`apps/web/worker.ts`): `/api/*` and `/health` → the API's Hono app in-process; app routes → SPA shell from assets; `/` → app or marketing by auth-hint cookie; everything else → Astro (prerendered from assets, on-demand rendered in the worker).
 - One worker is what a Workers for Platforms dispatch namespace accepts, so a customer's customised copy deploys in the same shape as the platform itself.
 - Database: Hyperdrive bindings when bound (the platform), else the `DATABASE_URL` secret (a customer copy) – `resolveDatabaseSources` in `apps/api/lib/db.ts`.
-- The Astro Cloudflare adapter builds the worker and emits `apps/web/dist/server/wrangler.json`, resolved for the environment chosen at build time (`CLOUDFLARE_ENV`); deploy that file, never `apps/web/wrangler.jsonc` directly.
+- The Astro Cloudflare adapter builds the worker and emits `apps/web/dist/server/wrangler.json`, resolved for the environment chosen at build time (`CLOUDFLARE_ENV`); `scripts/deploy.ts` adds the per-deployment values to it and deploys that, never `apps/web/wrangler.jsonc` directly.
+- The repo is a template. Nothing that belongs to one Cloudflare account or one deployment is committed: no Hyperdrive IDs, no `APP_ORIGIN`, no secrets. `scripts/deploy.ts` takes them from flags or the environment (`.env.local` locally, GitHub environment secrets in CI, the platform's database for a customer copy).
 - `nodejs_compat` is on (database driver, auth, Astro adapter).
 - Per-workspace conventions live in subdirectory `AGENTS.md` files: `apps/api/`, `apps/app/`, `db/`, `infra/`, `packages/ui/`.
 

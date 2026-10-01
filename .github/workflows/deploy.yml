@@ -105,7 +105,7 @@ jobs:
             echo "::error::CLOUDFLARE_ACCOUNT_ID is empty. Set it as a repository variable, or as a variable on the ${DEPLOY_ENV} environment if each environment uses its own Cloudflare account."
             exit 1
           fi
-          for name in CLOUDFLARE_API_TOKEN DATABASE_URL; do
+          for name in CLOUDFLARE_API_TOKEN DATABASE_URL BETTER_AUTH_SECRET RESEND_API_KEY; do
             if [[ -z "${!name}" ]]; then
               echo "::error::${name} is empty. Set it as a secret on the ${DEPLOY_ENV} environment."
               exit 1
@@ -159,21 +159,25 @@ jobs:
           unset DATABASE_URL
           bun run "db:migrate:${DEPLOY_ENV}"
 
-      # Order matters: a service binding resolves its target by name at deploy
-      # time, so `api` and `app` must exist before `web` binds to them. `web`
-      # also holds the only public route, so flipping it last moves user traffic
-      # after the workers behind it are new.
+      # The new worker goes live while every browser still running the SPA it
+      # loaded an hour ago keeps calling it. So API responses evolve like the
+      # schema: add the field, ship the clients that read it, drop the old
+      # shape later.
       #
-      # That narrows the skew but cannot remove it, and does nothing for the
-      # browser – every user still running the SPA they loaded an hour ago keeps
-      # calling the new API. So API responses evolve like the schema: add the
-      # field, ship the clients that read it, drop the old shape later.
-      - name: Deploy workers
+      # The repo is a template, so everything that belongs to this deployment
+      # arrives here: the public origin as an environment variable, the
+      # database URL (Hyperdrive configs are found or created from it, named
+      # after the worker) and the worker's secrets as environment secrets.
+      - name: Deploy worker
         env:
           # Set explicitly: a token with access to more than one account cannot
           # infer which.
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          APP_ORIGIN: ${{ vars.APP_ORIGIN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           DEPLOY_ENV: ${{ inputs.environment }}
         # `bun deploy:{staging,production}` runs the same script locally, so a
         # release from a laptop and one from CI cannot drift in order or in
@@ -181,4 +185,4 @@ jobs:
         # itself and rejects any other environment name outright, so a value
         # lost in transit fails the run rather than deploying production.
         # `--skip-build` because the restored artifact is the verified build.
-        run: bun scripts/deploy.ts "$DEPLOY_ENV" --skip-build
+        run: bun scripts/deploy.ts --env "$DEPLOY_ENV" --skip-build

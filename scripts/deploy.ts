@@ -1,106 +1,300 @@
 #!/usr/bin/env bun
 
 /**
- * @file Builds and deploys the worker to one environment.
+ * @file Deploys one copy of the worker, programmatically.
  *
- * The same command runs from a laptop and from `deploy.yml`, so a release from
- * either cannot drift in order or in environment selection. CI passes
- * `--skip-build` because it deploys the artifact it already verified.
+ * The repo is a template: `apps/web/wrangler.jsonc` holds the shape of a
+ * deployment and nothing that belongs to one account. This script adds the
+ * per-deployment values and uploads. It is the same entry point for all
+ * three deployers:
  *
- * Migrations are not here. They run before the workers in CI, under a
- * credential this script never sees, and applying them from a laptop is a
- * separate deliberate act – `bun db:migrate:staging`.
+ *   - a person, with values in the git-ignored `.env.local` (Bun loads it);
+ *   - CI, with values in GitHub environment secrets and variables;
+ *   - the platform, deploying a customer's copy with values from its database.
+ *
+ * Steps:
+ *   1. build (unless --skip-build), with `CLOUDFLARE_ENV` selecting the
+ *      Wrangler environment the adapter resolves into dist/server/wrangler.json;
+ *   2. Hyperdrive: use the IDs given, else find-or-create two configs named
+ *      after the worker from the database URL, so the worker reaches Postgres
+ *      through Cloudflare's pool wherever the visitor is;
+ *   3. write a resolved config beside the generated one – name, APP_ORIGIN,
+ *      Hyperdrive bindings;
+ *   4. upload, standalone on workers.dev or into a Workers for Platforms
+ *      dispatch namespace (--namespace);
+ *   5. set the worker's secrets through the REST API.
+ *
+ * Usage:
+ *   bun scripts/deploy.ts [--env staging|production] [--name cust-acme]
+ *     [--origin https://host] [--database-url postgres://... |
+ *      --hyperdrive-cached-id ID --hyperdrive-uncached-id ID]
+ *     [--namespace customers] [--skip-build] [--dry-run]
+ *
+ * Every flag falls back to an environment variable: APP_ORIGIN, DATABASE_URL,
+ * HYPERDRIVE_CACHED_ID, HYPERDRIVE_UNCACHED_ID. Always from the environment:
+ * CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN (the deployer's, never a
+ * customer's), BETTER_AUTH_SECRET, RESEND_API_KEY.
+ *
+ * `--dry-run` skips every network call, still writes the resolved config, and
+ * asks Wrangler to bundle it, so the artifact and config are validated offline.
  */
 
-import { access } from "node:fs/promises";
+import { access, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { parseArgs } from "node:util";
 
-const USAGE =
-  "Usage: bun scripts/deploy.ts <staging|production> [--skip-build]";
+const { values: args } = parseArgs({
+  args: Bun.argv.slice(2),
+  options: {
+    env: { type: "string", default: "production" },
+    name: { type: "string" },
+    origin: { type: "string" },
+    "database-url": { type: "string" },
+    "hyperdrive-cached-id": { type: "string" },
+    "hyperdrive-uncached-id": { type: "string" },
+    namespace: { type: "string" },
+    "skip-build": { type: "boolean", default: false },
+    "dry-run": { type: "boolean", default: false },
+  },
+});
 
-const repoRoot = resolve(import.meta.dir, "..");
-const [environment, ...options] = Bun.argv.slice(2);
-
-if (environment === "--help" || environment === "-h") {
-  console.log(USAGE);
-  process.exit(0);
-}
-
-// Unknown flags are rejected rather than ignored: a mistyped `--skip-builds`
-// that silently rebuilt would waste minutes, and one that silently skipped
-// would deploy a stale `dist`.
-if (
-  (environment !== "staging" && environment !== "production") ||
-  options.some((option) => option !== "--skip-build")
-) {
-  console.error(USAGE);
+function fail(message: string): never {
+  console.error(message);
   process.exit(1);
 }
 
-const skipBuild = options.includes("--skip-build");
+const environment = args.env;
+if (environment !== "production" && environment !== "staging") {
+  fail("--env must be production or staging");
+}
+const dryRun = args["dry-run"];
+const namespace = args.namespace;
+
+const origin =
+  args.origin ??
+  process.env.APP_ORIGIN ??
+  fail("--origin or APP_ORIGIN is required");
+if (!/^https?:\/\/[^/]+$/.test(origin)) {
+  fail("--origin must be a bare origin such as https://app.example.com");
+}
+
+const givenIds = {
+  cached: args["hyperdrive-cached-id"] ?? process.env.HYPERDRIVE_CACHED_ID,
+  uncached:
+    args["hyperdrive-uncached-id"] ?? process.env.HYPERDRIVE_UNCACHED_ID,
+};
+const databaseUrl = args["database-url"] ?? process.env.DATABASE_URL;
+if (!(givenIds.cached && givenIds.uncached) && !databaseUrl) {
+  fail(
+    "Give --database-url (Hyperdrive is created from it) or both Hyperdrive IDs.",
+  );
+}
+
+const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+if (!dryRun && (!accountId || !apiToken)) {
+  fail(
+    "Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN (or use --dry-run).",
+  );
+}
+
+const secrets: Record<string, string | undefined> = {
+  BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+};
+for (const [name, value] of Object.entries(secrets)) {
+  if (!value && !dryRun) fail(`${name} is required in the environment.`);
+}
+
+const repoRoot = resolve(import.meta.dir, "..");
+const serverDir = resolve(repoRoot, "apps/web/dist/server");
+const generatedConfig = resolve(serverDir, "wrangler.json");
 
 async function run(
   command: string[],
   env: Record<string, string | undefined> = {},
-): Promise<void> {
-  console.log(`\n$ ${command.map((part) => JSON.stringify(part)).join(" ")}`);
-
+) {
+  console.log(`\n$ ${command.join(" ")}`);
   const child = Bun.spawn(command, {
     cwd: repoRoot,
-    env: { ...process.env, ...env },
     stdin: "inherit",
     stdout: "inherit",
     stderr: "inherit",
+    env: { ...process.env, ...env },
   });
-
-  const exitCode = await child.exited;
-  if (exitCode !== 0) process.exit(exitCode);
+  if ((await child.exited) !== 0) fail("Command failed.");
 }
 
-// The web worker is built by the Astro Cloudflare adapter, which selects the
-// Wrangler environment at build time through `CLOUDFLARE_ENV` and writes a
-// resolved config to `apps/web/dist/server/wrangler.json`. Production is the
-// top-level config, so the variable stays unset for it.
-const cloudflareEnv = environment === "production" ? undefined : environment;
+// --- 1. Build -----------------------------------------------------------------
 
-if (!skipBuild) {
-  await run(["bun", "run", "build"], { CLOUDFLARE_ENV: cloudflareEnv });
+// Production is Wrangler's top-level config; the adapter selects a named
+// environment through CLOUDFLARE_ENV at build time.
+if (!args["skip-build"]) {
+  await run(["bun", "run", "build"], {
+    CLOUDFLARE_ENV: environment === "production" ? undefined : environment,
+  });
 }
 
-// Wrangler resolves `./dist` relative to each `wrangler.jsonc` and uploads an
-// empty asset directory without complaint, so a missing build surfaces as a
-// blank site rather than a failed deploy.
-for (const artifact of [
-  "apps/email/dist",
-  "apps/app/dist",
-  "apps/web/dist/server/wrangler.json",
-]) {
-  try {
-    await access(resolve(repoRoot, artifact));
-  } catch {
-    console.error(
-      `Missing ${artifact}; build first, or omit --skip-build to build automatically.`,
+try {
+  await access(generatedConfig);
+} catch {
+  fail(`Missing ${generatedConfig} – build first, or omit --skip-build.`);
+}
+
+type WranglerConfig = Record<string, unknown> & {
+  name: string;
+  vars?: Record<string, string>;
+  hyperdrive?: { binding: string; id: string }[];
+  secrets?: unknown;
+  workers_dev?: boolean;
+};
+
+const base = JSON.parse(
+  await readFile(generatedConfig, "utf8"),
+) as WranglerConfig;
+const scriptName = args.name ?? base.name;
+if (!/^[a-z0-9-]{1,63}$/.test(scriptName)) {
+  fail("--name must be lowercase letters, digits and hyphens");
+}
+
+// --- Cloudflare REST helpers -------------------------------------------------
+
+const API = "https://api.cloudflare.com/client/v4";
+
+async function cf<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const response = await fetch(`${API}/accounts/${accountId}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${apiToken}`,
+      "Content-Type": "application/json",
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const json = (await response.json()) as {
+    success: boolean;
+    result: T;
+    errors: { message: string }[];
+  };
+  if (!json.success) {
+    throw new Error(
+      `${method} ${path} failed: ${json.errors.map((e) => e.message).join("; ")}`,
     );
-    process.exit(1);
   }
+  return json.result;
 }
 
-// No `--env-file`, deliberately. Wrangler already loads `.env`, `.env.local`
-// and – when `--env` names one – `.env.<env>.local` relative to the working
-// directory, which is why `cwd` above is the repo root. Listing the first two
-// explicitly, as the per-worker `*:deploy` scripts do, would only suppress the
-// third on a staging deploy. Real credentials stay safe either way: Wrangler
-// merges the files under `process.env`, so an exported value wins over the
-// placeholders in the committed `.env`.
+// --- 2. Hyperdrive ------------------------------------------------------------
 
-console.log(`\nDeploying to ${environment}.`);
+type HyperdriveConfig = { id: string; name: string };
 
-// The generated config is already resolved for one environment (see
-// `cloudflareEnv` above), so it takes no `--env`.
+// Hyperdrive stores the origin as discrete fields, so split the URL the same
+// way `infra/modules/cloudflare/main.tf` does. Anything after `?` is dropped:
+// TLS to the origin is Hyperdrive's setting, not the client's.
+function parseOrigin(url: string) {
+  const match =
+    /^postgres(?:ql)?:\/\/([^:@/]+):([^@/]*)@([^:@/?#]+)(?::(\d+))?\/([^?/]+)/.exec(
+      url,
+    );
+  if (!match)
+    fail("--database-url must look like postgres://user:pass@host:port/db");
+  const [, user, password, host, port, database] = match;
+  return {
+    scheme: "postgres",
+    user,
+    password: decodeURIComponent(password),
+    host,
+    port: port ? Number(port) : 5432,
+    database,
+  };
+}
+
+async function ensureHyperdrive(
+  name: string,
+  caching: { disabled: boolean },
+): Promise<HyperdriveConfig> {
+  if (dryRun) return { id: `dry-run-${name}`, name };
+
+  const existing = await cf<HyperdriveConfig[]>("GET", "/hyperdrive/configs");
+  const found = existing.find((c) => c.name === name);
+  if (found) return found;
+
+  return cf<HyperdriveConfig>("POST", "/hyperdrive/configs", {
+    name,
+    origin: parseOrigin(databaseUrl!),
+    caching,
+  });
+}
+
+console.log(`\nHyperdrive for ${scriptName}`);
+const hyperdrive =
+  givenIds.cached && givenIds.uncached
+    ? { cached: givenIds.cached, uncached: givenIds.uncached }
+    : {
+        uncached: (
+          await ensureHyperdrive(`${scriptName}-uncached`, { disabled: true })
+        ).id,
+        cached: (
+          await ensureHyperdrive(`${scriptName}-cached`, { disabled: false })
+        ).id,
+      };
+console.log(
+  `  uncached: ${hyperdrive.uncached}\n  cached:   ${hyperdrive.cached}`,
+);
+
+// --- 3. Resolved config -------------------------------------------------------
+
+const config: WranglerConfig = {
+  ...base,
+  name: scriptName,
+  vars: { ...base.vars, APP_ORIGIN: origin },
+  hyperdrive: [
+    { binding: "HYPERDRIVE_CACHED", id: hyperdrive.cached },
+    { binding: "HYPERDRIVE_UNCACHED", id: hyperdrive.uncached },
+  ],
+  // A dispatch script has no workers.dev address; a standalone worker needs
+  // one unless a custom domain route is configured.
+  workers_dev: !namespace,
+};
+// Wrangler checks required secrets against the target before uploading, and
+// a first deploy has none yet. They are set right after the upload instead.
+delete config.secrets;
+
+const configPath = resolve(serverDir, `wrangler.${scriptName}.json`);
+await writeFile(configPath, JSON.stringify(config, null, 2));
+console.log(`\nResolved config: ${configPath}`);
+
+// --- 4. Upload ----------------------------------------------------------------
+
 await run([
   "bun",
   "wrangler",
   "deploy",
   "--config",
-  "apps/web/dist/server/wrangler.json",
+  configPath,
+  ...(namespace ? ["--dispatch-namespace", namespace] : []),
+  ...(dryRun
+    ? ["--dry-run", "--outdir", resolve(serverDir, `dry-run-${scriptName}`)]
+    : []),
 ]);
+
+// --- 5. Secrets ---------------------------------------------------------------
+
+if (dryRun) {
+  console.log(
+    `\nDry run: would set ${Object.keys(secrets).join(", ")} on ${scriptName}.`,
+  );
+} else {
+  const secretsPath = namespace
+    ? `/workers/dispatch/namespaces/${namespace}/scripts/${scriptName}/secrets`
+    : `/workers/scripts/${scriptName}/secrets`;
+  for (const [name, text] of Object.entries(secrets)) {
+    await cf("PUT", secretsPath, { name, text, type: "secret_text" });
+    console.log(`  secret set: ${name}`);
+  }
+}
+
+console.log(
+  namespace
+    ? `\nDeployed ${scriptName} into namespace "${namespace}". Route a hostname to it from your dispatch worker.`
+    : `\nDeployed ${scriptName} (${environment}). It answers at ${origin}.`,
+);

@@ -28,13 +28,19 @@
   },
 
   // [ENV:PRODUCTION]
-  // Command: bun deploy:production (builds, then deploys dist/server/wrangler.json)
+  // Command: bun deploy:production (builds, resolves, then deploys)
   //
   // Served from the free workers.dev address (`workers_dev: true` above). To
   // attach a custom domain, add a `routes` entry here: this worker is the
   // origin for the whole hostname, so Wrangler creates the DNS record and
   // certificate. The pattern must be a bare hostname – no "/*", no zone_name.
   //   "routes": [{ "pattern": "example.com", "custom_domain": true }],
+  //
+  // This file is a template: nothing in it belongs to one Cloudflare account
+  // or one deployment. `scripts/deploy.ts` adds the per-deployment values to
+  // the config the adapter emits – the worker name, APP_ORIGIN, the Hyperdrive
+  // bindings (created from the deployment's database URL, or passed as IDs)
+  // and the secrets – from flags or the environment, never from the repo.
   //
   // Replace RESEND_EMAIL_FROM before going live. `onboarding@resend.dev` is
   // Resend's shared testing sender: it can only deliver to the address that
@@ -43,22 +49,7 @@
   "vars": {
     "ENVIRONMENT": "production",
     "APP_NAME": "Starterkit SaaS",
-    "APP_ORIGIN": "https://starterkitsaas.YOUR-SUBDOMAIN.workers.dev",
     "RESEND_EMAIL_FROM": "onboarding@resend.dev"
-  },
-  // The platform's own database, pooled and cached by Hyperdrive. A customer
-  // copy deployed to a dispatch namespace has no Hyperdrive; it gets the
-  // `DATABASE_URL` secret instead (apps/api/lib/db.ts).
-  // oxfmt-ignore
-  "hyperdrive": [
-    { "binding": "HYPERDRIVE_CACHED", "id": "178526d41fa141c584348b7c2aea504d" },
-    { "binding": "HYPERDRIVE_UNCACHED", "id": "c9e4d71ec5694e8395418424392a0538" }
-  ],
-  // Deploy fails fast when one of these is unset. Values live in Cloudflare
-  // (`wrangler secret put`); only the required-name contract is versioned.
-  // Not inheritable, so every environment repeats it.
-  "secrets": {
-    "required": ["BETTER_AUTH_SECRET", "RESEND_API_KEY"]
   },
 
   "env": {
@@ -84,16 +75,7 @@
       "vars": {
         "ENVIRONMENT": "staging",
         "APP_NAME": "Starterkit SaaS",
-        "APP_ORIGIN": "https://starterkitsaas-staging.YOUR-SUBDOMAIN.workers.dev",
         "RESEND_EMAIL_FROM": "onboarding@resend.dev"
-      },
-      // oxfmt-ignore
-      "hyperdrive": [
-        { "binding": "HYPERDRIVE_CACHED", "id": "your-staging-hyperdrive-cached-id-here" },
-        { "binding": "HYPERDRIVE_UNCACHED", "id": "your-staging-hyperdrive-uncached-id-here" }
-      ],
-      "secrets": {
-        "required": ["BETTER_AUTH_SECRET", "RESEND_API_KEY"]
       }
     }
   }
