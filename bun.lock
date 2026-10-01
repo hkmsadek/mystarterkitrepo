@@ -123,6 +123,7 @@
         "@astrojs/react": "^6.0.5",
         "@repo/api": "workspace:*",
         "@repo/app": "workspace:*",
+        "@repo/core": "workspace:*",
         "@repo/ui": "workspace:*",
         "@trpc/client": "^11.19.0",
         "astro": "^7.3.2",

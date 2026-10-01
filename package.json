@@ -10,7 +10,7 @@
   ],
   "type": "module",
   "scripts": {
-    "dev": "bun --filter @repo/web --filter @repo/api --filter @repo/app dev",
+    "dev": "bun --filter @repo/web --filter @repo/api dev",
     "lint": "oxlint --deny-warnings --report-unused-disable-directives",
     "format": "oxfmt",
     "format:check": "oxfmt --check",

@@ -4,6 +4,8 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 import { loadEnv } from "vite";
 
+import { devApp } from "./dev-app.ts";
+
 // Astro does not expose the root .env to this config file, so load it explicitly.
 const env = loadEnv(process.env.NODE_ENV || "development", "../..", "");
 
@@ -67,7 +69,7 @@ export default defineConfig({
   integrations: [react()],
   vite: {
     // Astro recommends Tailwind v4's dedicated Vite plugin.
-    plugins: [tailwindcss()],
+    plugins: [tailwindcss(), devApp()],
     // See the same setting in apps/app/vite.config.ts.
     server: {
       allowedHosts: env.DEV_ALLOWED_HOSTS?.split(",").filter(Boolean),

@@ -24,7 +24,7 @@
 ## Commands
 
 ```bash
-bun dev                        # Start web + api + app concurrently
+bun dev                        # Start web (hosts the app) + api; open http://localhost:4321
 bun run build                  # Build email, web, api, and app workspaces
 bun run test                   # Vitest (watch mode; --run for single run)
 bun lint                       # Oxlint
@@ -47,6 +47,7 @@ bun deploy:{staging,production} # Build and deploy the worker; no migrations
 
 ## Architecture
 
+- Development mirrors production's single origin. The Astro dev server (4321) embeds the app's Vite config as middleware under `/_app/` (`apps/web/dev-app.ts`), serves the app shell for `APP_PATHS`, and forwards `/api/*` to the API dev server (8787) in-process. `bun dev` starts those two; `bun app:dev` still runs the SPA alone on 5173 when that is useful.
 - One worker (`apps/web/worker.ts`): `/api/*` and `/health` → the API's Hono app in-process; app routes → SPA shell from assets; `/` → app or marketing by auth-hint cookie; everything else → Astro (prerendered from assets, on-demand rendered in the worker).
 - One worker is what a Workers for Platforms dispatch namespace accepts, so a customer's customised copy deploys in the same shape as the platform itself.
 - Database: Hyperdrive bindings when bound (the platform), else the `DATABASE_URL` secret (a customer copy) – `resolveDatabaseSources` in `apps/api/lib/db.ts`.

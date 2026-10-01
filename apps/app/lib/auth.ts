@@ -19,7 +19,7 @@ import { authConfig } from "./auth-config";
 const baseURL =
   typeof window !== "undefined"
     ? window.location.origin
-    : "http://localhost:5173";
+    : "http://localhost:4321";
 
 export const auth = createAuthClient({
   baseURL: baseURL + authConfig.api.basePath,

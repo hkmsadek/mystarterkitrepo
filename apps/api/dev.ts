@@ -80,7 +80,7 @@ app.use(async (c, next) => {
       c.req.header("x-forwarded-origin") ||
       process.env.APP_ORIGIN ||
       c.env.APP_ORIGIN ||
-      "http://localhost:5173",
+      "http://localhost:4321",
   };
 
   c.set("db", db);

@@ -15,7 +15,7 @@ const publicEnvVars = ["APP_NAME"];
  * Vite configuration.
  * https://vitejs.dev/config/
  */
-export default defineProject(({ mode }) => {
+export default defineProject(({ mode, command }) => {
   const envDir = fileURLToPath(new URL("../..", import.meta.url));
   const env = loadEnv(mode, envDir, "");
 
@@ -26,6 +26,14 @@ export default defineProject(({ mode }) => {
 
   return {
     cacheDir: fileURLToPath(new URL("../../.cache/vite-app", import.meta.url)),
+
+    // In development every module URL, the HMR socket and the shell live under
+    // `/_app/`, the same prefix the production build uses for its bundles.
+    // The Astro dev server embeds this configuration as middleware
+    // (`apps/web/dev-app.ts`), so one origin hosts the site, the app and the
+    // API in development as the worker does in production. The build keeps
+    // `/` because its output already nests under `_app/assets` by filename.
+    base: command === "serve" ? "/_app/" : "/",
 
     build: {
       rolldownOptions: {

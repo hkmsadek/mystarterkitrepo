@@ -3,8 +3,9 @@
  *
  * - `/api/*` and `/health` go to the API (`@repo/api/worker`, Hono + tRPC +
  *   Better Auth), dispatched in-process – no network hop.
- * - App routes (`APP_PATHS`) serve the SPA shell from ASSETS; the app's build
- *   is copied under `_app/` by `scripts/bundle-app.ts`.
+ * - App routes (`APP_PATHS` from `@repo/core/app-paths`) serve the SPA shell
+ *   from ASSETS; the app's build is copied under `_app/` by
+ *   `scripts/bundle-app.ts`.
  * - "/" is the marketing home for everyone; the app's dashboard is `/dashboard`.
  * - Everything else is Astro: prerendered pages and static files from ASSETS,
  *   on-demand pages (`export const prerender = false`) rendered here.
@@ -15,29 +16,8 @@
 
 import { handle as astro } from "@astrojs/cloudflare/handler";
 import api from "@repo/api/worker";
+import { APP_PATHS } from "@repo/core/app-paths";
 import { Hono } from "hono";
-
-/**
- * Top-level paths owned by the SPA.
- *
- * Keep route entries in sync with the app-owned top-level routes under
- * `apps/app/routes/`. Missing entries fall through to the marketing site on a
- * direct request, even though client-side navigation still works.
- *
- * Everything under `apps/web/pages/` is marketing-owned and must not appear
- * here. `apps/app/lib/edge-routing.test.ts`
- * checks both directions.
- */
-const APP_PATHS = [
-  "_app", // Vite build output (JS, CSS, assets)
-  "dashboard",
-  "login",
-  "members",
-  "posts",
-  "settings",
-  "signup",
-  "todos",
-] as const;
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -53,7 +33,18 @@ const toApi = import.meta.env.DEV
         url.pathname + url.search,
         import.meta.env.API_ORIGIN,
       );
-      return fetch(new Request(target, c.req.raw));
+      // The API dev server trusts the origin named here (cookies, Better Auth
+      // trusted origins, redirects), the same contract as the SPA's Vite proxy.
+      const headers = new Headers(c.req.raw.headers);
+      headers.set("x-forwarded-origin", url.origin);
+      return fetch(
+        new Request(target, {
+          method: c.req.raw.method,
+          headers,
+          body: c.req.raw.body,
+          redirect: "manual",
+        }),
+      );
     }
   : (c: { req: { raw: Request }; env: Env; executionCtx: unknown }) =>
       api.fetch(c.req.raw, c.env, c.executionCtx as ExecutionContext);

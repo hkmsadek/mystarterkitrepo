@@ -5,9 +5,10 @@ import { describe, expect, it } from "vitest";
 
 /**
  * The worker serves the SPA shell for a hardcoded list of top-level paths
- * (`apps/web/worker.ts`). Anything missing from that list falls through to the
- * marketing site and 404s – but only on direct load or refresh, since
- * client-side navigation never hits the edge. This guards that gap.
+ * (`APP_PATHS` in `packages/core/app-paths.ts`, also used by the dev server).
+ * Anything missing from that list falls through to the marketing site and
+ * 404s – but only on direct load or refresh, since client-side navigation
+ * never hits the edge. This guards that gap.
  */
 
 // Walk up from the test runner's cwd until the monorepo root is found, so this
@@ -24,6 +25,10 @@ function findRepoRoot(): string {
 
 const repoRoot = findRepoRoot();
 const workerSource = readFileSync(join(repoRoot, "apps/web/worker.ts"), "utf8");
+const appPathsSource = readFileSync(
+  join(repoRoot, "packages/core/app-paths.ts"),
+  "utf8",
+);
 
 // The page and endpoint file types Astro turns into routes. Anything else under
 // `pages/` is inert, so it must not be mistaken for a marketing URL.
@@ -83,10 +88,12 @@ function marketingOwnedPaths(): Set<string> {
 const MARKETING_OWNED = marketingOwnedPaths();
 
 function forwardedPaths(): string[] {
-  const block = workerSource.match(
+  const block = appPathsSource.match(
     /const APP_PATHS = \[([\s\S]*?)\] as const;/,
   );
-  if (!block) throw new Error("APP_PATHS not found in apps/web/worker.ts");
+  if (!block) {
+    throw new Error("APP_PATHS not found in packages/core/app-paths.ts");
+  }
   return [...block[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
 }
 
@@ -136,7 +143,7 @@ describe("edge routing", () => {
 
     expect(
       missing,
-      `Add these to APP_PATHS in apps/web/worker.ts, or they will 404 on direct load: ${missing.join(", ")}`,
+      `Add these to APP_PATHS in packages/core/app-paths.ts, or they will 404 on direct load: ${missing.join(", ")}`,
     ).toEqual([]);
   });
 
