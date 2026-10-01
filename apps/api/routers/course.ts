@@ -1,12 +1,14 @@
-import { course } from "@repo/db";
+import { course, enrollment } from "@repo/db";
 import { TRPCError } from "@trpc/server";
 import { asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { publicProcedure, router } from "../lib/trpc.js";
+import { protectedProcedure, publicProcedure, router } from "../lib/trpc.js";
 
 // Public catalogue reads go through `dbCached`: the same query for every
 // visitor, and a course appearing one cache window late is acceptable.
+// Enrolment reads and writes stay on `db`: a student must see their own
+// enrolment the moment it exists.
 export const courseRouter = router({
   list: publicProcedure.query(({ ctx }) =>
     ctx.dbCached
@@ -37,4 +39,55 @@ export const courseRouter = router({
       }
       return row;
     }),
+
+  enroll: protectedProcedure
+    .input(z.object({ courseId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const found = await ctx.db.query.course.findFirst({
+        columns: { id: true },
+        where: (c, { and, eq }) =>
+          and(eq(c.id, input.courseId), eq(c.published, true)),
+      });
+      if (!found) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+      }
+
+      // Enrolling twice is a no-op, not an error: the button may be clicked
+      // again after a slow response.
+      await ctx.db
+        .insert(enrollment)
+        .values({ userId: ctx.user.id, courseId: input.courseId })
+        .onConflictDoNothing();
+
+      return { courseId: input.courseId };
+    }),
+
+  myEnrollments: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.db.query.enrollment.findMany({
+      where: (e, { eq }) => eq(e.userId, ctx.user.id),
+      orderBy: (e, { desc }) => desc(e.createdAt),
+      with: {
+        course: {
+          columns: {
+            id: true,
+            slug: true,
+            title: true,
+            summary: true,
+            level: true,
+          },
+          with: { lessons: { columns: { id: true } } },
+        },
+      },
+    });
+
+    return rows.map((e) => ({
+      courseId: e.course.id,
+      slug: e.course.slug,
+      title: e.course.title,
+      summary: e.course.summary,
+      level: e.course.level,
+      lessonCount: e.course.lessons.length,
+      enrolledAt: e.createdAt,
+    }));
+  }),
 });

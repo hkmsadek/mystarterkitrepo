@@ -1,161 +1,88 @@
 ---
 import BaseLayout from '#layouts/BaseLayout.astro';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui';
+import { Button } from '@repo/ui';
 
-const features = [
+const pillars = [
   {
-    title: "⚡ Fast by Default",
-    description: "Static marketing pages and a code-split SPA, cached at the edge",
-    content: "Astro prerenders the marketing site, Vite splits the app per route, and Cloudflare serves both."
+    title: 'Short, structured programmes',
+    body: 'Two to four weeks each. One lesson a day, ten to twenty minutes, with a single practice to try before the next.',
   },
   {
-    title: "🎨 Modern UI",
-    description: "Beautiful components with ShadCN UI and Tailwind CSS",
-    content: "Pre-built components following modern design principles and accessibility standards."
+    title: 'Evidence over trends',
+    body: 'Cognitive behavioural techniques, sleep science, and acceptance-based tools. Nothing you will have to unlearn later.',
   },
   {
-    title: "🚀 Developer Experience",
-    description: "TypeScript, hot reload, and excellent tooling",
-    content: "Full TypeScript support with Vite, TanStack Router, and modern development tools."
+    title: 'A coach when you want one',
+    body: 'Self-paced by default. Add one-to-one sessions when a programme stalls or life gets loud.',
   },
-  {
-    title: "📱 Full-Stack",
-    description: "tRPC API with PostgreSQL and authentication",
-    content: "Complete backend solution with type-safe APIs and database integration."
-  },
-  {
-    title: "🔧 Configurable",
-    description: "Monorepo structure with workspace management",
-    content: "Organized codebase with separate app, API, edge, and database workspaces."
-  },
-  {
-    title: "☁️ Serverless Ready",
-    description: "Deploy to edge locations worldwide",
-    content: "Built for Cloudflare Workers with global distribution and automatic scaling."
-  }
 ];
 
-const technologies = [
-  "React 19", "TypeScript", "Astro", "TanStack Router",
-  "ShadCN UI", "Tailwind CSS", "Bun", "Hono",
-  "tRPC", "PostgreSQL", "Cloudflare", "Jotai"
+const steps = [
+  { n: '1', title: 'Pick a programme', body: 'Start with what hurts most: sleep, worry, stress at work, or running on empty.' },
+  { n: '2', title: 'Do one lesson a day', body: 'Short reads and one practice. Your dashboard keeps your place.' },
+  { n: '3', title: 'Keep what works', body: 'Each programme ends with a plan you wrote, for the weeks after it.' },
 ];
 ---
 
 <BaseLayout>
-  <!-- Hero Section -->
-  <section class="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background to-muted/20">
-    <div class="container mx-auto text-center">
+  <section class="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background to-muted/30">
+    <div class="container mx-auto max-w-4xl text-center">
+      <p class="text-sm font-medium uppercase tracking-wider text-primary mb-4">Mental health coaching</p>
       <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-        React Starter Kit
+        Feel steadier, one week at a time.
       </h1>
-      <p class="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-        Modern full-stack web application template optimized for serverless
-        deployment to CDN edge locations. Built with React, TypeScript, and
-        the latest web technologies.
+      <p class="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+        Practical programmes for stress, sleep, anxiety and burnout, built on evidence and paced for a full life. Self-guided, with a coach when you need one.
       </p>
       <div class="flex flex-col sm:flex-row gap-4 justify-center">
         <Button size="lg" asChild>
-          <a
-            href="https://github.com/kriasoft/react-starter-kit"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Get Started
-          </a>
+          <a href="/courses">Browse programmes</a>
         </Button>
-        <Button variant="outline" size="lg" asChild>
-          <a
-            href="https://github.com/kriasoft/react-starter-kit"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View on GitHub
-          </a>
+        <Button size="lg" variant="outline" asChild>
+          <a href="/signup">Start free</a>
         </Button>
       </div>
+      <p class="mt-4 text-sm text-muted-foreground">Free programme included. No card needed.</p>
     </div>
   </section>
 
-  <!-- Features Section -->
-  <section class="py-20 px-4 sm:px-6 lg:px-8">
-    <div class="container mx-auto">
-      <div class="text-center mb-16">
-        <h2 class="text-3xl font-bold tracking-tight mb-4">
-          Everything you need to build modern web apps
-        </h2>
-        <p class="text-muted-foreground text-lg max-w-2xl mx-auto">
-          React Starter Kit provides a solid foundation with best practices,
-          modern tooling, and optimized performance out of the box.
-        </p>
-      </div>
+  <section class="py-16 px-4 sm:px-6 lg:px-8">
+    <div class="container mx-auto max-w-5xl grid gap-8 md:grid-cols-3">
+      {pillars.map((p) => (
+        <div class="rounded-xl border bg-card p-6">
+          <h2 class="text-lg font-semibold mb-2">{p.title}</h2>
+          <p class="text-muted-foreground">{p.body}</p>
+        </div>
+      ))}
+    </div>
+  </section>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {features.map((feature) => (
-          <Card>
-            <CardHeader>
-              <CardTitle>{feature.title}</CardTitle>
-              <CardDescription>{feature.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p class="text-sm text-muted-foreground">{feature.content}</p>
-            </CardContent>
-          </Card>
+  <section class="py-16 px-4 sm:px-6 lg:px-8 bg-muted/30">
+    <div class="container mx-auto max-w-5xl">
+      <h2 class="text-3xl font-bold tracking-tight text-center mb-12">How it works</h2>
+      <ol class="grid gap-8 md:grid-cols-3">
+        {steps.map((s) => (
+          <li class="flex gap-4">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">{s.n}</span>
+            <div>
+              <h3 class="font-semibold mb-1">{s.title}</h3>
+              <p class="text-muted-foreground">{s.body}</p>
+            </div>
+          </li>
         ))}
-      </div>
+      </ol>
     </div>
   </section>
 
-  <!-- Tech Stack Section -->
-  <section class="py-20 px-4 sm:px-6 lg:px-8 bg-muted/20">
-    <div class="container mx-auto text-center">
-      <h2 class="text-3xl font-bold tracking-tight mb-4">
-        Built with Modern Technologies
-      </h2>
-      <p class="text-muted-foreground text-lg mb-12 max-w-2xl mx-auto">
-        Carefully selected technologies that work together seamlessly
-      </p>
-
-      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
-        {technologies.map((tech) => (
-          <div class="p-4 rounded-lg bg-background border">
-            <span class="font-medium">{tech}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <!-- CTA Section -->
   <section class="py-20 px-4 sm:px-6 lg:px-8">
-    <div class="container mx-auto text-center">
-      <h2 class="text-3xl font-bold tracking-tight mb-4">
-        Ready to start building?
-      </h2>
-      <p class="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
-        Get started with React Starter Kit today and build your next project
-        with confidence.
+    <div class="container mx-auto max-w-3xl text-center">
+      <h2 class="text-3xl font-bold tracking-tight mb-4">Not sure where to start?</h2>
+      <p class="text-lg text-muted-foreground mb-8">
+        The blog has short, honest pieces on the things people bring to coaching most. Read a few, then pick the programme that sounds like your week.
       </p>
-
       <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button size="lg" asChild>
-          <a
-            href="https://github.com/kriasoft/react-starter-kit"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Clone Repository
-          </a>
-        </Button>
-        <Button variant="outline" size="lg" asChild>
-          <a
-            href="https://github.com/kriasoft/react-starter-kit#readme"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read Documentation
-          </a>
-        </Button>
+        <Button size="lg" variant="outline" asChild><a href="/blog">Read the blog</a></Button>
+        <Button size="lg" asChild><a href="/courses">See programmes</a></Button>
       </div>
     </div>
   </section>

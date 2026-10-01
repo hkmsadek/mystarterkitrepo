@@ -13,16 +13,16 @@ const price = (cents: number) =>
   cents === 0 ? 'Free' : new Intl.NumberFormat('en', { style: 'currency', currency: 'USD' }).format(cents / 100);
 ---
 
-<BaseLayout title="Courses - Starterkit SaaS" description="Courses rendered on request from the database.">
+<BaseLayout title="Programmes - SteadyMind" description="Short, structured programmes for stress, sleep, anxiety and burnout.">
   <section class="py-16 px-4 sm:px-6 lg:px-8">
     <div class="container mx-auto max-w-5xl">
-      <h1 class="text-4xl font-bold tracking-tight mb-2">Courses</h1>
+      <h1 class="text-4xl font-bold tracking-tight mb-2">Programmes</h1>
       <p class="text-muted-foreground mb-10">
-        The catalogue and every course page are rendered by the worker when you request them.
+        Two to four weeks each. One short lesson a day and a single practice to carry into the next.
       </p>
 
       {courses.length === 0 ? (
-        <p class="text-muted-foreground">No courses published yet.</p>
+        <p class="text-muted-foreground">No programmes published yet.</p>
       ) : (
         <ul class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {courses.map((c) => (
@@ -34,7 +34,7 @@ const price = (cents: number) =>
               <p class="mt-2 text-muted-foreground flex-1">{c.summary}</p>
               <div class="mt-4 flex items-center justify-between">
                 <span class="font-semibold">{price(c.priceCents)}</span>
-                <a href={`/courses/${c.slug}`} class="text-sm font-medium text-primary hover:underline">View course &rarr;</a>
+                <a href={`/courses/${c.slug}`} class="text-sm font-medium text-primary hover:underline">View programme &rarr;</a>
               </div>
             </li>
           ))}

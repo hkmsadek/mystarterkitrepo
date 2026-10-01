@@ -1,4 +1,4 @@
-import { course, lesson } from "@repo/db";
+import { course, lesson, user } from "@repo/db";
 import { createTestDatabase } from "@repo/db/testing";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -13,15 +13,44 @@ const { db, reset, close } = await createTestDatabase();
 afterAll(close);
 beforeEach(reset);
 
-const caller = createCaller({
-  req: new Request("http://localhost"),
-  info: {} as TRPCContext["info"],
-  session: null,
-  user: null,
-  db,
-  dbCached: db,
-  env: {} as TRPCContext["env"],
-});
+function callerFor(userId: string | null) {
+  const ctx: TRPCContext = {
+    req: new Request("http://localhost"),
+    info: {} as TRPCContext["info"],
+    session: userId
+      ? {
+          id: "ses_test",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          userId,
+          expiresAt: new Date(Date.now() + 60_000),
+          token: "token",
+        }
+      : null,
+    user: userId
+      ? {
+          id: userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          email: "student@example.com",
+          emailVerified: true,
+          name: "Student",
+        }
+      : null,
+    db,
+    dbCached: db,
+    env: {} as TRPCContext["env"],
+  };
+  return createCaller(ctx);
+}
+
+async function insertUser(email: string) {
+  const [row] = await db
+    .insert(user)
+    .values({ name: "Student", email, emailVerified: true })
+    .returning();
+  return row.id;
+}
 
 async function insertCourse(slug: string, published: boolean) {
   const [row] = await db
@@ -40,11 +69,12 @@ async function insertCourse(slug: string, published: boolean) {
 
 describe("course", () => {
   it("lists only published courses", async () => {
+    const anonymous = callerFor(null);
     await insertCourse("live", true);
     await insertCourse("draft", false);
 
-    expect((await caller.list()).map((c) => c.slug)).toEqual(["live"]);
-    await expect(caller.bySlug({ slug: "draft" })).rejects.toMatchObject({
+    expect((await anonymous.list()).map((c) => c.slug)).toEqual(["live"]);
+    await expect(anonymous.bySlug({ slug: "draft" })).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
   });
@@ -62,8 +92,39 @@ describe("course", () => {
       },
     ]);
 
-    const found = await caller.bySlug({ slug: "live" });
+    const found = await callerFor(null).bySlug({ slug: "live" });
     expect(found.lessons.map((l) => l.title)).toEqual(["First", "Second"]);
     expect(found.lessons[0].preview).toBe(true);
+  });
+
+  it("enrols a signed-in user once and lists their courses", async () => {
+    const student = callerFor(await insertUser("a@example.com"));
+    const other = callerFor(await insertUser("b@example.com"));
+    const id = await insertCourse("live", true);
+    await db
+      .insert(lesson)
+      .values({ courseId: id, position: 1, title: "Only", durationMinutes: 5 });
+
+    await expect(
+      callerFor(null).enroll({ courseId: id }),
+    ).rejects.toMatchObject({
+      code: "UNAUTHORIZED",
+    });
+
+    await student.enroll({ courseId: id });
+    await student.enroll({ courseId: id });
+
+    const mine = await student.myEnrollments();
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({ slug: "live", lessonCount: 1 });
+    expect(await other.myEnrollments()).toEqual([]);
+  });
+
+  it("refuses enrolment in an unpublished course", async () => {
+    const student = callerFor(await insertUser("a@example.com"));
+    const id = await insertCourse("draft", false);
+    await expect(student.enroll({ courseId: id })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 });

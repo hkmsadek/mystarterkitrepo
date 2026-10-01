@@ -11,6 +11,7 @@ This directory owns reusable server-state queries. Components and route loaders 
 | `config.ts` | `['config', 'socialProviders']` | Server-derived deployment capabilities |
 | `organization.ts` | `['organization', 'members', activeOrgId]` | Members of the active organization, plus organization creation |
 | `blog.ts` | `['blog', 'mine']` | The signed-in user's blog posts and the create/delete mutations; public reads happen server-side in the marketing site |
+| `course.ts` | `['course', 'myEnrollments']` | The signed-in user's programme enrolments for the dashboard; enrolling happens on the marketing site |
 | `todo.ts` | `['todo', 'list']` | The signed-in user's todo items and the mutations that change them |
 
 Tests live beside the query modules.

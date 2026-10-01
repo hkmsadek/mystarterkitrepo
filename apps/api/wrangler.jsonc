@@ -22,7 +22,7 @@
   // OTP, so leaving it here means nobody but you can sign in.
   "vars": {
     "ENVIRONMENT": "production",
-    "APP_NAME": "Starterkit SaaS",
+    "APP_NAME": "SteadyMind",
     "APP_ORIGIN": "https://starterkitsaas-web.YOUR-SUBDOMAIN.workers.dev",
     "RESEND_EMAIL_FROM": "onboarding@resend.dev"
   },
@@ -55,7 +55,7 @@
     "dev": {
       "vars": {
         "ENVIRONMENT": "development",
-        "APP_NAME": "Example",
+        "APP_NAME": "SteadyMind",
         "APP_ORIGIN": "http://localhost:5173",
         "RESEND_EMAIL_FROM": "onboarding@resend.dev"
       },
@@ -74,7 +74,7 @@
     "staging": {
       "vars": {
         "ENVIRONMENT": "staging",
-        "APP_NAME": "Example",
+        "APP_NAME": "SteadyMind",
         "APP_ORIGIN": "https://staging.example.com",
         "RESEND_EMAIL_FROM": "onboarding@resend.dev"
       },

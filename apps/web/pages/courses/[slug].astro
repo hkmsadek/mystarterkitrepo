@@ -6,6 +6,7 @@ export const prerender = false;
 import { TRPCClientError } from '@trpc/client';
 
 import BaseLayout from '#layouts/BaseLayout.astro';
+import { EnrollButton } from '../../components/EnrollButton';
 import { api } from '../../lib/api';
 
 const { slug } = Astro.params;
@@ -31,12 +32,12 @@ const price =
     : new Intl.NumberFormat('en', { style: 'currency', currency: 'USD' }).format(course.priceCents / 100);
 ---
 
-<BaseLayout title={`${course.title} - Starterkit SaaS`} description={course.summary}>
+<BaseLayout title={`${course.title} - SteadyMind`} description={course.summary}>
   <article class="py-16 px-4 sm:px-6 lg:px-8">
     <div class="container mx-auto max-w-5xl grid gap-10 lg:grid-cols-[1fr_320px]">
       <div>
         <a href="/courses" class="text-sm text-muted-foreground hover:text-foreground transition-colors">
-          &larr; All courses
+          &larr; All programmes
         </a>
         <span class="block mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">{course.level}</span>
         <h1 class="text-4xl font-bold tracking-tight mt-1 mb-3">{course.title}</h1>
@@ -67,14 +68,10 @@ const price =
       <aside class="h-fit rounded-xl border bg-card p-6 lg:sticky lg:top-24">
         <p class="text-3xl font-bold">{price}</p>
         <p class="mt-1 text-sm text-muted-foreground">Lifetime access</p>
-        {/* Enrolment is app territory: it needs a signed-in user, so the
-            button is a document navigation into the SPA. */}
-        <a
-          href={`/login?returnTo=${encodeURIComponent(`/courses/${course.slug}`)}`}
-          class="mt-6 inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
-        >
-          Enrol
-        </a>
+        <div class="mt-6">
+          {/* An island: the page is shared and cached, the button is personal. */}
+          <EnrollButton client:load courseId={course.id} slug={course.slug} free={course.priceCents === 0} />
+        </div>
       </aside>
     </div>
   </article>

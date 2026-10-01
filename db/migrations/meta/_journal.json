@@ -36,6 +36,13 @@
       "when": 1790841632024,
       "tag": "0004_courses_todo_owner",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790843818175,
+      "tag": "0005_enrollment",
+      "breakpoints": true
     }
   ]
 }

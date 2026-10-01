@@ -1,4 +1,5 @@
 export * from "./course";
+export * from "./enrollment";
 export * from "./id";
 export * from "./invitation";
 export * from "./organization";

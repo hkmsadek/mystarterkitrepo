@@ -13,6 +13,7 @@ import {
   unique,
 } from "drizzle-orm/pg-core";
 
+import { enrollment } from "./enrollment";
 import { generateId } from "./id";
 
 export const course = pgTable("course", {
@@ -70,6 +71,7 @@ export const lesson = pgTable(
 
 export const courseRelations = relations(course, ({ many }) => ({
   lessons: many(lesson),
+  enrollments: many(enrollment),
 }));
 
 export const lessonRelations = relations(lesson, ({ one }) => ({
