@@ -3,15 +3,17 @@ import { useCallback, useRef, useState } from "react";
 
 import { auth } from "#lib/auth";
 
-type AuthStep = "method" | "email" | "otp";
+type AuthStep = "method" | "password" | "email" | "otp";
 
-// Minimal state machine for passwordless OTP flow. Intentionally shallow:
+// Minimal state machine: password first, emailed one-time code as the
+// alternative. Intentionally shallow:
 // - Errors are orthogonal to steps (can occur at any step)
 // - No terminal state (component unmounts on success)
-// Revisit if adding password fallback or MFA steps.
+// Revisit if adding MFA steps.
 const VALID_TRANSITIONS: Record<AuthStep, AuthStep[]> = {
-  method: ["email"],
-  email: ["method", "otp"],
+  method: ["password"],
+  password: ["method", "email"],
+  email: ["method", "password", "otp"],
   otp: ["email"],
 };
 
@@ -21,7 +23,7 @@ interface UseAuthFormOptions {
    * cache invalidation and navigation. Awaited before form state resets.
    */
   onSuccess: () => Promise<void>;
-  /** Copy and passkey availability. Both modes run the same OTP flow. */
+  /** Copy, passkey availability, and whether the password step creates the account. */
   mode?: "login" | "signup";
 }
 
@@ -73,6 +75,7 @@ export function useAuthForm({ onSuccess, mode = "login" }: UseAuthFormOptions) {
     if (clearErr) setError(null);
   };
 
+  const goToPasswordStep = () => transitionTo("password");
   const goToEmailStep = () => transitionTo("email");
   const goToMethodStep = () => transitionTo("method");
   // Go back to email step, preserving error message
@@ -126,6 +129,7 @@ export function useAuthForm({ onSuccess, mode = "login" }: UseAuthFormOptions) {
     onAuthSuccess,
     setError,
     sendOtp,
+    goToPasswordStep,
     goToEmailStep,
     goToMethodStep,
     resetToEmail,

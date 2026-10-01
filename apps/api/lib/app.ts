@@ -10,6 +10,7 @@ import { Hono } from "hono";
 import { billingRouter } from "../routers/billing.js";
 import { blogRouter } from "../routers/blog.js";
 import { configRouter } from "../routers/config.js";
+import { courseRouter } from "../routers/course.js";
 import { todoRouter } from "../routers/todo.js";
 import type { AppContext } from "./context.js";
 import { router } from "./trpc.js";
@@ -19,6 +20,7 @@ const appRouter = router({
   billing: billingRouter,
   blog: blogRouter,
   config: configRouter,
+  course: courseRouter,
   todo: todoRouter,
 });
 

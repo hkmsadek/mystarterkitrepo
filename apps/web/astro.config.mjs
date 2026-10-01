@@ -27,6 +27,9 @@ export default defineConfig({
   // `export const prerender = false` (see `pages/blog/`). The adapter runs
   // `worker.ts` as the Worker entry, in workerd, for dev and production alike.
   output: "static",
+  // Links are fetched when hovered, so a click on an on-demand page is served
+  // from the browser's cache rather than waiting on the worker and database.
+  prefetch: { prefetchAll: true, defaultStrategy: "hover" },
   // No Astro sessions (Better Auth owns sessions in the API) and no image
   // transforms, so the adapter provisions neither a KV namespace nor an
   // Images binding on deploy.

@@ -1,5 +1,5 @@
-// Todo items. `userId` is nullable while the feature is public for testing;
-// make it NOT NULL again and scope the router by user before shipping.
+// Personal todo items. Scoped to a user, not an organization: the list is
+// private to whoever created it, so no membership check is involved.
 
 import { relations } from "drizzle-orm";
 import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
@@ -13,7 +13,9 @@ export const todo = pgTable(
     id: text()
       .primaryKey()
       .$defaultFn(() => generateId("tdo")),
-    userId: text().references(() => user.id, { onDelete: "cascade" }),
+    userId: text()
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
     title: text().notNull(),
     completed: boolean().default(false).notNull(),
     createdAt: timestamp({ withTimezone: true, mode: "date" })

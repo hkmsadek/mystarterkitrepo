@@ -1,0 +1,45 @@
+---
+// Rendered on request from the database; see `pages/blog/index.astro`.
+export const prerender = false;
+
+import BaseLayout from '#layouts/BaseLayout.astro';
+import { api } from '../../lib/api';
+
+const courses = await api(Astro.request, Astro.locals.cfContext).course.list.query();
+
+Astro.response.headers.set('Cache-Control', 'public, max-age=60');
+
+const price = (cents: number) =>
+  cents === 0 ? 'Free' : new Intl.NumberFormat('en', { style: 'currency', currency: 'USD' }).format(cents / 100);
+---
+
+<BaseLayout title="Courses - Starterkit SaaS" description="Courses rendered on request from the database.">
+  <section class="py-16 px-4 sm:px-6 lg:px-8">
+    <div class="container mx-auto max-w-5xl">
+      <h1 class="text-4xl font-bold tracking-tight mb-2">Courses</h1>
+      <p class="text-muted-foreground mb-10">
+        The catalogue and every course page are rendered by the worker when you request them.
+      </p>
+
+      {courses.length === 0 ? (
+        <p class="text-muted-foreground">No courses published yet.</p>
+      ) : (
+        <ul class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {courses.map((c) => (
+            <li class="rounded-xl border bg-card p-6 flex flex-col">
+              <span class="text-xs font-medium uppercase tracking-wide text-muted-foreground">{c.level}</span>
+              <h2 class="mt-2 text-xl font-semibold">
+                <a href={`/courses/${c.slug}`} class="hover:text-primary transition-colors">{c.title}</a>
+              </h2>
+              <p class="mt-2 text-muted-foreground flex-1">{c.summary}</p>
+              <div class="mt-4 flex items-center justify-between">
+                <span class="font-semibold">{price(c.priceCents)}</span>
+                <a href={`/courses/${c.slug}`} class="text-sm font-medium text-primary hover:underline">View course &rarr;</a>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  </section>
+</BaseLayout>

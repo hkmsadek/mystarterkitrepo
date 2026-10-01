@@ -20,18 +20,17 @@ import {
   useTodosQuery,
 } from "#lib/queries/todo";
 
-export const Route = createFileRoute("/todos")({
+export const Route = createFileRoute("/(app)/todos")({
   component: Todos,
 });
 
 function Todos() {
   return (
-    <div className="mx-auto max-w-2xl p-6 space-y-6">
+    <div className="p-6 space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Todos</h2>
         <p className="text-muted-foreground">
-          Public test list. No sign-in required, and everyone sees the same
-          items.
+          Your personal list. Only you can see it.
         </p>
       </div>
 

@@ -8,15 +8,16 @@ import { useSocialProviders } from "#lib/queries/config";
 import { GoogleLogin } from "./google-login";
 import { OtpVerification } from "./otp-verification";
 import { PasskeyLogin } from "./passkey-login";
+import { PasswordForm } from "./password-form";
 import { useAuthForm } from "./use-auth-form";
 
 const APP_NAME = import.meta.env.VITE_APP_NAME;
 
 interface AuthFormProps extends ComponentProps<"div"> {
   /**
-   * Copy and passkey availability – passkeys need an existing account. Both
-   * modes run the same OTP flow, which creates the account when the address
-   * is new.
+   * Copy and passkey availability – passkeys need an existing account. The
+   * password step signs up or logs in by mode; the OTP flow creates the
+   * account when the address is new in either mode.
    */
   mode?: "login" | "signup";
   /** Called after successful auth. Awaited before UI progresses. Caller handles cache invalidation and navigation. */
@@ -41,6 +42,7 @@ export function AuthForm({
     onAuthSuccess,
     setError,
     sendOtp,
+    goToPasswordStep,
     goToEmailStep,
     goToMethodStep,
     resetToEmail,
@@ -88,7 +90,7 @@ export function AuthForm({
         <MethodSelection
           isSignup={isSignup}
           isDisabled={isDisabled}
-          onEmailClick={goToEmailStep}
+          onEmailClick={goToPasswordStep}
           onSuccess={onAuthSuccess}
           onError={setError}
           onLoadingChange={setChildBusy}
@@ -96,15 +98,27 @@ export function AuthForm({
         />
       )}
 
-      {/* Step: Email Input */}
+      {/* Step: Email + password */}
+      {step === "password" && (
+        <PasswordForm
+          mode={formMode}
+          isDisabled={isDisabled}
+          onSuccess={onAuthSuccess}
+          onError={setError}
+          onLoadingChange={setChildBusy}
+          onBack={goToMethodStep}
+          onUseCode={goToEmailStep}
+        />
+      )}
+
+      {/* Step: Email Input (one-time code) */}
       {step === "email" && (
         <EmailInput
           email={email}
-          isSignup={isSignup}
           isDisabled={isDisabled}
           onEmailChange={handleEmailChange}
           onSubmit={sendOtp}
-          onBack={goToMethodStep}
+          onBack={goToPasswordStep}
         />
       )}
 
@@ -215,7 +229,6 @@ function MethodSelection({
 // Step 2: Email Input
 interface EmailInputProps {
   email: string;
-  isSignup: boolean;
   isDisabled: boolean;
   onEmailChange: (email: string) => void;
   onSubmit: (e?: SubmitEvent) => void;
@@ -224,7 +237,6 @@ interface EmailInputProps {
 
 function EmailInput({
   email,
-  isSignup,
   isDisabled,
   onEmailChange,
   onSubmit,
@@ -267,7 +279,7 @@ function EmailInput({
         className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to {isSignup ? "sign up" : "login"}
+        Back to password
       </button>
     </div>
   );

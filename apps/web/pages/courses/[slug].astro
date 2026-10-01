@@ -1,0 +1,81 @@
+---
+// Rendered on request. The outline comes from the database on every visit, so
+// an author's change is live within the cache window with no rebuild.
+export const prerender = false;
+
+import { TRPCClientError } from '@trpc/client';
+
+import BaseLayout from '#layouts/BaseLayout.astro';
+import { api } from '../../lib/api';
+
+const { slug } = Astro.params;
+
+let course;
+try {
+  course = await api(Astro.request, Astro.locals.cfContext).course.bySlug.query({ slug: slug ?? '' });
+} catch (error) {
+  const status = error instanceof TRPCClientError ? error.data?.httpStatus : undefined;
+  if (status === 404 || status === 400) {
+    return new Response('Course not found', { status: 404 });
+  }
+  throw error;
+}
+
+Astro.response.headers.set('Cache-Control', 'public, max-age=60');
+
+const paragraphs = course.description.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+const totalMinutes = course.lessons.reduce((sum, l) => sum + l.durationMinutes, 0);
+const price =
+  course.priceCents === 0
+    ? 'Free'
+    : new Intl.NumberFormat('en', { style: 'currency', currency: 'USD' }).format(course.priceCents / 100);
+---
+
+<BaseLayout title={`${course.title} - Starterkit SaaS`} description={course.summary}>
+  <article class="py-16 px-4 sm:px-6 lg:px-8">
+    <div class="container mx-auto max-w-5xl grid gap-10 lg:grid-cols-[1fr_320px]">
+      <div>
+        <a href="/courses" class="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          &larr; All courses
+        </a>
+        <span class="block mt-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">{course.level}</span>
+        <h1 class="text-4xl font-bold tracking-tight mt-1 mb-3">{course.title}</h1>
+        <p class="text-lg text-muted-foreground">{course.summary}</p>
+
+        <div class="mt-8 space-y-5 leading-relaxed">
+          {paragraphs.map((paragraph) => <p>{paragraph}</p>)}
+        </div>
+
+        <h2 class="mt-10 text-2xl font-semibold">Outline</h2>
+        <p class="text-sm text-muted-foreground mb-4">
+          {course.lessons.length} lessons · {totalMinutes} minutes
+        </p>
+        <ol class="divide-y rounded-xl border">
+          {course.lessons.map((l) => (
+            <li class="flex items-center gap-4 p-4">
+              <span class="w-6 text-sm text-muted-foreground">{l.position}</span>
+              <span class="flex-1 font-medium">{l.title}</span>
+              {l.preview && (
+                <span class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Preview</span>
+              )}
+              <span class="text-sm text-muted-foreground">{l.durationMinutes} min</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <aside class="h-fit rounded-xl border bg-card p-6 lg:sticky lg:top-24">
+        <p class="text-3xl font-bold">{price}</p>
+        <p class="mt-1 text-sm text-muted-foreground">Lifetime access</p>
+        {/* Enrolment is app territory: it needs a signed-in user, so the
+            button is a document navigation into the SPA. */}
+        <a
+          href={`/login?returnTo=${encodeURIComponent(`/courses/${course.slug}`)}`}
+          class="mt-6 inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
+        >
+          Enrol
+        </a>
+      </aside>
+    </div>
+  </article>
+</BaseLayout>

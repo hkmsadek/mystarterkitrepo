@@ -1,3 +1,4 @@
+export * from "./course";
 export * from "./id";
 export * from "./invitation";
 export * from "./organization";

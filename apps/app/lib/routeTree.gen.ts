@@ -10,26 +10,16 @@
 
 import { Route as rootRouteImport } from './../routes/__root'
 import { Route as appRouteRouteImport } from './../routes/(app)/route'
-import { Route as PostsRouteImport } from './../routes/posts'
-import { Route as TodosRouteImport } from './../routes/todos'
 import { Route as appIndexRouteImport } from './../routes/(app)/index'
 import { Route as appMembersRouteImport } from './../routes/(app)/members'
+import { Route as appPostsRouteImport } from './../routes/(app)/posts'
 import { Route as appSettingsRouteImport } from './../routes/(app)/settings'
+import { Route as appTodosRouteImport } from './../routes/(app)/todos'
 import { Route as authLoginRouteImport } from './../routes/(auth)/login'
 import { Route as authSignupRouteImport } from './../routes/(auth)/signup'
 
 const appRouteRoute = appRouteRouteImport.update({
   id: '/(app)',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PostsRoute = PostsRouteImport.update({
-  id: '/posts',
-  path: '/posts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TodosRoute = TodosRouteImport.update({
-  id: '/todos',
-  path: '/todos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const appIndexRoute = appIndexRouteImport.update({
@@ -42,9 +32,19 @@ const appMembersRoute = appMembersRouteImport.update({
   path: '/members',
   getParentRoute: () => appRouteRoute,
 } as any)
+const appPostsRoute = appPostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
+  getParentRoute: () => appRouteRoute,
+} as any)
 const appSettingsRoute = appSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => appRouteRoute,
+} as any)
+const appTodosRoute = appTodosRouteImport.update({
+  id: '/todos',
+  path: '/todos',
   getParentRoute: () => appRouteRoute,
 } as any)
 const authLoginRoute = authLoginRouteImport.update({
@@ -59,19 +59,19 @@ const authSignupRoute = authSignupRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/posts': typeof PostsRoute
-  '/todos': typeof TodosRoute
   '/members': typeof appMembersRoute
+  '/posts': typeof appPostsRoute
   '/settings': typeof appSettingsRoute
+  '/todos': typeof appTodosRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
   '/': typeof appIndexRoute
 }
 export interface FileRoutesByTo {
-  '/posts': typeof PostsRoute
-  '/todos': typeof TodosRoute
   '/members': typeof appMembersRoute
+  '/posts': typeof appPostsRoute
   '/settings': typeof appSettingsRoute
+  '/todos': typeof appTodosRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
   '/': typeof appIndexRoute
@@ -79,10 +79,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/(app)': typeof appRouteRouteWithChildren
-  '/posts': typeof PostsRoute
-  '/todos': typeof TodosRoute
   '/(app)/members': typeof appMembersRoute
+  '/(app)/posts': typeof appPostsRoute
   '/(app)/settings': typeof appSettingsRoute
+  '/(app)/todos': typeof appTodosRoute
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
   '/(app)/': typeof appIndexRoute
@@ -90,17 +90,17 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/posts' | '/todos' | '/members' | '/settings' | '/login' | '/signup' | '/'
+    '/members' | '/posts' | '/settings' | '/todos' | '/login' | '/signup' | '/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/posts' | '/todos' | '/members' | '/settings' | '/login' | '/signup' | '/'
+    '/members' | '/posts' | '/settings' | '/todos' | '/login' | '/signup' | '/'
   id:
     | '__root__'
     | '/(app)'
-    | '/posts'
-    | '/todos'
     | '/(app)/members'
+    | '/(app)/posts'
     | '/(app)/settings'
+    | '/(app)/todos'
     | '/(auth)/login'
     | '/(auth)/signup'
     | '/(app)/'
@@ -108,8 +108,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   appRouteRoute: typeof appRouteRouteWithChildren
-  PostsRoute: typeof PostsRoute
-  TodosRoute: typeof TodosRoute
   authLoginRoute: typeof authLoginRoute
   authSignupRoute: typeof authSignupRoute
 }
@@ -121,20 +119,6 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof appRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/todos': {
-      id: '/todos'
-      path: '/todos'
-      fullPath: '/todos'
-      preLoaderRoute: typeof TodosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(app)/': {
@@ -151,11 +135,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appMembersRouteImport
       parentRoute: typeof appRouteRoute
     }
+    '/(app)/posts': {
+      id: '/(app)/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof appPostsRouteImport
+      parentRoute: typeof appRouteRoute
+    }
     '/(app)/settings': {
       id: '/(app)/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof appSettingsRouteImport
+      parentRoute: typeof appRouteRoute
+    }
+    '/(app)/todos': {
+      id: '/(app)/todos'
+      path: '/todos'
+      fullPath: '/todos'
+      preLoaderRoute: typeof appTodosRouteImport
       parentRoute: typeof appRouteRoute
     }
     '/(auth)/login': {
@@ -177,13 +175,17 @@ declare module '@tanstack/react-router' {
 
 interface appRouteRouteChildren {
   appMembersRoute: typeof appMembersRoute
+  appPostsRoute: typeof appPostsRoute
   appSettingsRoute: typeof appSettingsRoute
+  appTodosRoute: typeof appTodosRoute
   appIndexRoute: typeof appIndexRoute
 }
 
 const appRouteRouteChildren: appRouteRouteChildren = {
   appMembersRoute: appMembersRoute,
+  appPostsRoute: appPostsRoute,
   appSettingsRoute: appSettingsRoute,
+  appTodosRoute: appTodosRoute,
   appIndexRoute: appIndexRoute,
 }
 
@@ -193,8 +195,6 @@ const appRouteRouteWithChildren = appRouteRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   appRouteRoute: appRouteRouteWithChildren,
-  PostsRoute: PostsRoute,
-  TodosRoute: TodosRoute,
   authLoginRoute: authLoginRoute,
   authSignupRoute: authSignupRoute,
 }

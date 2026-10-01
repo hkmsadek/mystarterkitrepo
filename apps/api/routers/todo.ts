@@ -1,36 +1,41 @@
 import { todo } from "@repo/db";
 import { TRPCError } from "@trpc/server";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { publicProcedure, router } from "../lib/trpc.js";
+import { protectedProcedure, router } from "../lib/trpc.js";
 
-// Public for testing: one shared list, no sign-in required. Before shipping,
-// switch to `protectedProcedure` and filter every query on `ctx.user.id`.
+// Every procedure filters on `userId` as well as `id`, so a caller can only
+// ever read or change their own rows. A missing row and someone else's row are
+// deliberately indistinguishable: both are NOT_FOUND.
 const todoId = z.object({ id: z.string().min(1) });
 
 export const todoRouter = router({
-  list: publicProcedure.query(({ ctx }) =>
-    ctx.db.select().from(todo).orderBy(desc(todo.createdAt)),
+  list: protectedProcedure.query(({ ctx }) =>
+    ctx.db
+      .select()
+      .from(todo)
+      .where(eq(todo.userId, ctx.user.id))
+      .orderBy(desc(todo.createdAt)),
   ),
 
-  create: publicProcedure
+  create: protectedProcedure
     .input(z.object({ title: z.string().trim().min(1).max(500) }))
     .mutation(async ({ ctx, input }) => {
       const [row] = await ctx.db
         .insert(todo)
-        .values({ title: input.title })
+        .values({ userId: ctx.user.id, title: input.title })
         .returning();
       return row;
     }),
 
-  setCompleted: publicProcedure
+  setCompleted: protectedProcedure
     .input(todoId.extend({ completed: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const [row] = await ctx.db
         .update(todo)
         .set({ completed: input.completed })
-        .where(eq(todo.id, input.id))
+        .where(and(eq(todo.id, input.id), eq(todo.userId, ctx.user.id)))
         .returning();
 
       if (!row) {
@@ -39,10 +44,10 @@ export const todoRouter = router({
       return row;
     }),
 
-  remove: publicProcedure.input(todoId).mutation(async ({ ctx, input }) => {
+  remove: protectedProcedure.input(todoId).mutation(async ({ ctx, input }) => {
     const [row] = await ctx.db
       .delete(todo)
-      .where(eq(todo.id, input.id))
+      .where(and(eq(todo.id, input.id), eq(todo.userId, ctx.user.id)))
       .returning({ id: todo.id });
 
     if (!row) {
