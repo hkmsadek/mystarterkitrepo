@@ -54,7 +54,7 @@ export function EnrollButton({ courseId, slug, free }: Props) {
   if (status === "anonymous") {
     return (
       <Button className="w-full" asChild>
-        <a href={`/signup?returnTo=${returnTo}`}>
+        <a href={`/signup?returnTo=${returnTo}`} data-astro-reload="">
           {free ? "Start for free" : "Sign up to enrol"}
         </a>
       </Button>
@@ -64,7 +64,9 @@ export function EnrollButton({ courseId, slug, free }: Props) {
   if (status === "enrolled") {
     return (
       <Button className="w-full" variant="outline" asChild>
-        <a href="/dashboard">Enrolled · Open dashboard</a>
+        <a href="/dashboard" data-astro-reload="">
+          Enrolled · Open dashboard
+        </a>
       </Button>
     );
   }

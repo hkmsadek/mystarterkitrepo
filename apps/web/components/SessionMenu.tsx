@@ -48,11 +48,16 @@ export function SessionMenu() {
   if (state.status === "out") {
     return (
       <div className="flex items-center gap-2">
+        {/* Real navigations: the app is a separate bundle, not an Astro page. */}
         <Button variant="ghost" size="sm" asChild>
-          <a href="/login">Log in</a>
+          <a href="/login" data-astro-reload="">
+            Log in
+          </a>
         </Button>
         <Button size="sm" asChild>
-          <a href="/signup">Start free</a>
+          <a href="/signup" data-astro-reload="">
+            Start free
+          </a>
         </Button>
       </div>
     );
@@ -103,13 +108,19 @@ export function SessionMenu() {
         <DropdownMenuSeparator />
         {/* Document navigations: the app is a separate bundle at these paths. */}
         <DropdownMenuItem asChild>
-          <a href="/dashboard">Dashboard</a>
+          <a href="/dashboard" data-astro-reload="">
+            Dashboard
+          </a>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <a href="/todos">Todos</a>
+          <a href="/todos" data-astro-reload="">
+            Todos
+          </a>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <a href="/settings">Settings</a>
+          <a href="/settings" data-astro-reload="">
+            Settings
+          </a>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={signOut}>Log out</DropdownMenuItem>
