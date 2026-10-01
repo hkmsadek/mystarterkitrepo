@@ -76,6 +76,10 @@ export default defineProject(({ mode }) => {
     ],
 
     server: {
+      // Dev servers refuse unknown Host headers. A sandbox or tunnel exposes
+      // this server under its own hostname, listed in DEV_ALLOWED_HOSTS
+      // (comma-separated; a leading dot allows every subdomain).
+      allowedHosts: env.DEV_ALLOWED_HOSTS?.split(",").filter(Boolean),
       proxy: {
         // Proxy API requests to the backend server during development
         "/api": {

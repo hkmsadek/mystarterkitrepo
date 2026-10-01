@@ -68,6 +68,10 @@ export default defineConfig({
   vite: {
     // Astro recommends Tailwind v4's dedicated Vite plugin.
     plugins: [tailwindcss()],
+    // See the same setting in apps/app/vite.config.ts.
+    server: {
+      allowedHosts: env.DEV_ALLOWED_HOSTS?.split(",").filter(Boolean),
+    },
     define: {
       // Where on-demand pages reach the API when no service binding is
       // attached, i.e. under `astro dev`. Production uses the binding.
