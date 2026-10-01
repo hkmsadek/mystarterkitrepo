@@ -35,8 +35,12 @@ const toApi = import.meta.env.DEV
       );
       // The API dev server trusts the origin named here (cookies, Better Auth
       // trusted origins, redirects), the same contract as the SPA's Vite proxy.
+      // The browser's own Origin header is the one value that survives a
+      // TLS-terminating sandbox or tunnel proxy intact; without it (plain GET)
+      // the API falls back to its configured APP_ORIGIN.
       const headers = new Headers(c.req.raw.headers);
-      headers.set("x-forwarded-origin", url.origin);
+      const origin = c.req.raw.headers.get("origin");
+      if (origin) headers.set("x-forwarded-origin", origin);
       return fetch(
         new Request(target, {
           method: c.req.raw.method,
