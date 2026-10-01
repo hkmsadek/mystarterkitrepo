@@ -51,8 +51,8 @@
   // `DATABASE_URL` secret instead (apps/api/lib/db.ts).
   // oxfmt-ignore
   "hyperdrive": [
-    { "binding": "HYPERDRIVE_CACHED", "id": "your-hyperdrive-cached-id-here" },
-    { "binding": "HYPERDRIVE_UNCACHED", "id": "your-hyperdrive-uncached-id-here" }
+    { "binding": "HYPERDRIVE_CACHED", "id": "178526d41fa141c584348b7c2aea504d" },
+    { "binding": "HYPERDRIVE_UNCACHED", "id": "c9e4d71ec5694e8395418424392a0538" }
   ],
   // Deploy fails fast when one of these is unset. Values live in Cloudflare
   // (`wrangler secret put`); only the required-name contract is versioned.
