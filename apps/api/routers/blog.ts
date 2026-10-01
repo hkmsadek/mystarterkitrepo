@@ -22,9 +22,12 @@ const publishedOnly = and(
   isNotNull(post.publishedAt),
 );
 
+// The two public reads go through `dbCached`: every visitor runs the same
+// query, and a post appearing one cache window late is acceptable for a blog.
+// Authoring reads stay on `db` so a writer sees their own change at once.
 export const blogRouter = router({
   list: publicProcedure.query(({ ctx }) =>
-    ctx.db
+    ctx.dbCached
       .select({
         id: post.id,
         slug: post.slug,
@@ -40,7 +43,7 @@ export const blogRouter = router({
   bySlug: publicProcedure
     .input(z.object({ slug }))
     .query(async ({ ctx, input }) => {
-      const row = await ctx.db.query.post.findFirst({
+      const row = await ctx.dbCached.query.post.findFirst({
         where: (p, { and, eq, isNotNull }) =>
           and(
             eq(p.slug, input.slug),
