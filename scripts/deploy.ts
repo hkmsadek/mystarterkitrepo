@@ -31,7 +31,7 @@
  *     [--namespace customers] [--skip-build] [--dry-run]
  *
  * Every flag falls back to an environment variable: APP_ORIGIN, DATABASE_URL,
- * HYPERDRIVE_CACHED_ID, HYPERDRIVE_UNCACHED_ID. Always from the environment:
+ * HYPERDRIVE_CACHED_ID, HYPERDRIVE_UNCACHED_ID, DEPLOY_NAME, DISPATCH_NAMESPACE. Always from the environment:
  * CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN (the deployer's, never a
  * customer's), BETTER_AUTH_SECRET, RESEND_API_KEY.
  *
@@ -68,7 +68,9 @@ if (environment !== "production" && environment !== "staging") {
   fail("--env must be production or staging");
 }
 const dryRun = args["dry-run"];
-const namespace = args.namespace;
+// A deployment that is a customer copy names its script and namespace; CI
+// passes them as DEPLOY_NAME and DISPATCH_NAMESPACE repository variables.
+const namespace = args.namespace ?? process.env.DISPATCH_NAMESPACE ?? undefined;
 
 const origin =
   args.origin ??
@@ -152,7 +154,7 @@ type WranglerConfig = Record<string, unknown> & {
 const base = JSON.parse(
   await readFile(generatedConfig, "utf8"),
 ) as WranglerConfig;
-const scriptName = args.name ?? base.name;
+const scriptName = args.name ?? process.env.DEPLOY_NAME ?? base.name;
 if (!/^[a-z0-9-]{1,63}$/.test(scriptName)) {
   fail("--name must be lowercase letters, digits and hyphens");
 }
