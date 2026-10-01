@@ -4,7 +4,7 @@ import { Home, ListTodo, Newspaper, Settings, Users } from "lucide-react";
 export const SIDEBAR_ID = "app-sidebar";
 
 export const sidebarItems = [
-  { icon: Home, label: "Dashboard", to: "/" },
+  { icon: Home, label: "Dashboard", to: "/dashboard" },
   { icon: ListTodo, label: "Todos", to: "/todos" },
   { icon: Newspaper, label: "Posts", to: "/posts" },
   { icon: Users, label: "Members", to: "/members" },

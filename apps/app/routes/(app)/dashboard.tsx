@@ -14,7 +14,7 @@ import { useMembersQuery } from "#lib/queries/organization";
 import { useSessionQuery } from "#lib/queries/session";
 import type { FileRoutesByTo } from "#lib/routeTree.gen";
 
-export const Route = createFileRoute("/(app)/")({
+export const Route = createFileRoute("/(app)/dashboard")({
   component: Dashboard,
 });
 

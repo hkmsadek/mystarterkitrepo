@@ -46,7 +46,7 @@ export function EnrollButton({ courseId, slug, free }: Props) {
       body: JSON.stringify({ courseId }),
     });
     if (!response.ok) return setStatus("error");
-    window.location.assign("/");
+    window.location.assign("/dashboard");
   }
 
   const returnTo = encodeURIComponent(`/courses/${slug}`);
@@ -64,7 +64,7 @@ export function EnrollButton({ courseId, slug, free }: Props) {
   if (status === "enrolled") {
     return (
       <Button className="w-full" variant="outline" asChild>
-        <a href="/">Enrolled · Open dashboard</a>
+        <a href="/dashboard">Enrolled · Open dashboard</a>
       </Button>
     );
   }

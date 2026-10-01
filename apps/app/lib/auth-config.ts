@@ -17,11 +17,14 @@ export function isValidRedirectUrl(url: string): boolean {
   return url.startsWith("/") && !url.startsWith("//");
 }
 
-// Returns "/" for invalid or missing URLs
+/** Where a signed-in user lands when nothing more specific was asked for. */
+export const DASHBOARD_PATH = "/dashboard";
+
+// Returns the dashboard for invalid or missing URLs
 export function getSafeRedirectUrl(url: unknown): string {
   if (typeof url !== "string" || !url) {
-    return "/";
+    return DASHBOARD_PATH;
   }
 
-  return isValidRedirectUrl(url) ? url : "/";
+  return isValidRedirectUrl(url) ? url : DASHBOARD_PATH;
 }

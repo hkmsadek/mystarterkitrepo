@@ -8,7 +8,7 @@ import {
 import { z } from "zod";
 
 import { AuthForm } from "#components/auth";
-import { getSafeRedirectUrl } from "#lib/auth-config";
+import { DASHBOARD_PATH, getSafeRedirectUrl } from "#lib/auth-config";
 import { socialProvidersQueryOptions } from "#lib/queries/config";
 import {
   isValidSession,
@@ -23,7 +23,7 @@ const searchSchema = z.object({
     .optional()
     .transform((val) => {
       const safe = getSafeRedirectUrl(val);
-      return safe === "/" ? undefined : safe;
+      return safe === DASHBOARD_PATH ? undefined : safe;
     })
     .catch(undefined),
 });
@@ -43,7 +43,7 @@ export const Route = createFileRoute("/(auth)/signup")({
 
       // Redirect authenticated users to their destination
       if (isValidSession(session)) {
-        throw redirect({ to: search.returnTo ?? "/" });
+        throw redirect({ to: search.returnTo ?? DASHBOARD_PATH });
       }
     } catch (error) {
       // Re-throw redirects, show signup form for fetch errors
@@ -62,7 +62,7 @@ function SignupPage() {
 
   async function handleSuccess() {
     await revalidateSession(queryClient, router);
-    await router.navigate({ to: search.returnTo ?? "/" });
+    await router.navigate({ to: search.returnTo ?? DASHBOARD_PATH });
   }
 
   return (

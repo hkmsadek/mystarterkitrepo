@@ -10,7 +10,7 @@ export function NotFound() {
           The page you're looking for doesn't exist.
         </p>
         <Button asChild>
-          <Link to="/">Go Home</Link>
+          <Link to="/dashboard">Go to dashboard</Link>
         </Button>
       </div>
     </div>

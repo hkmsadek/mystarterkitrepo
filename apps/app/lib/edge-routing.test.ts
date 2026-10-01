@@ -76,7 +76,7 @@ function marketingOwnedPaths(): Set<string> {
     );
   }
 
-  // `index` is "/", routed by the auth-hint handler rather than APP_PATHS.
+  // `index` is "/", the marketing home, which is never an app path.
   return new Set(names.filter((name) => name !== "index"));
 }
 
@@ -112,8 +112,8 @@ function topLevelRoutes(): string[] {
 
   const segments = [...union[1].matchAll(/'([^']*)'/g)]
     .map((match) => match[1].split("/")[1])
-    // "/" yields an empty segment. The auth-hint handler routes it, not
-    // APP_PATHS.
+    // "/" would yield an empty segment; the app has no root route, since the
+    // marketing site owns "/".
     .filter(Boolean);
 
   // `$slug` required, `{-$slug}` optional – both carry the parameter marker.

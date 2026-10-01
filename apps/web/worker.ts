@@ -5,8 +5,7 @@
  *   Better Auth), dispatched in-process – no network hop.
  * - App routes (`APP_PATHS`) serve the SPA shell from ASSETS; the app's build
  *   is copied under `_app/` by `scripts/bundle-app.ts`.
- * - "/" is the marketing home unless the auth-hint cookie says the visitor is
- *   signed in, in which case it is the app – see docs/adr/001-auth-hint-cookie.md.
+ * - "/" is the marketing home for everyone; the app's dashboard is `/dashboard`.
  * - Everything else is Astro: prerendered pages and static files from ASSETS,
  *   on-demand pages (`export const prerender = false`) rendered here.
  *
@@ -17,7 +16,6 @@
 import { handle as astro } from "@astrojs/cloudflare/handler";
 import api from "@repo/api/worker";
 import { Hono } from "hono";
-import { getCookie } from "hono/cookie";
 
 /**
  * Top-level paths owned by the SPA.
@@ -26,12 +24,13 @@ import { getCookie } from "hono/cookie";
  * `apps/app/routes/`. Missing entries fall through to the marketing site on a
  * direct request, even though client-side navigation still works.
  *
- * `/` is handled below using the auth hint. Everything under `apps/web/pages/`
- * is marketing-owned and must not appear here. `apps/app/lib/edge-routing.test.ts`
+ * Everything under `apps/web/pages/` is marketing-owned and must not appear
+ * here. `apps/app/lib/edge-routing.test.ts`
  * checks both directions.
  */
 const APP_PATHS = [
   "_app", // Vite build output (JS, CSS, assets)
+  "dashboard",
   "login",
   "members",
   "posts",
@@ -82,34 +81,6 @@ async function spa(c: { req: { raw: Request }; env: Env }) {
 for (const path of APP_PATHS) {
   app.all(`/${path}`, spa);
   app.all(`/${path}/*`, spa);
-}
-
-// Home page: route based on auth-hint cookie presence
-// __Host-auth (HTTPS) or auth (HTTP dev) – see docs/adr/001-auth-hint-cookie.md
-app.on(["GET", "HEAD"], "/", async (c, next) => {
-  const hasAuthHint =
-    getCookie(c, "__Host-auth") === "1" || getCookie(c, "auth") === "1";
-
-  if (hasAuthHint) {
-    // Not `spa(c)`: "/" is also the prerendered marketing page in ASSETS.
-    return withPrivateCache(await spaShell(c));
-  }
-
-  // Marketing home, served by Astro below.
-  await next();
-  c.res = withPrivateCache(c.res);
-});
-
-// Prevent caching – the response at "/" varies by auth state.
-function withPrivateCache(upstream: Response) {
-  const headers = new Headers(upstream.headers);
-  headers.set("Cache-Control", "private, no-store");
-  headers.set("Vary", "Cookie");
-  return new Response(upstream.body, {
-    status: upstream.status,
-    statusText: upstream.statusText,
-    headers,
-  });
 }
 
 // Astro: static files, prerendered pages and on-demand pages. This is the

@@ -21,10 +21,7 @@
   // adapter sets the directory (`dist/client`) in the emitted config; naming
   // one here would shadow Astro's dev server for prerendered routes.
   "assets": {
-    "binding": "ASSETS",
-    // Force worker execution for "/" to enable auth-aware routing
-    // See docs/adr/001-auth-hint-cookie.md
-    "run_worker_first": ["/"]
+    "binding": "ASSETS"
   },
 
   // [ENV:PRODUCTION]

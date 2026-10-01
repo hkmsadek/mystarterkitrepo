@@ -30,6 +30,32 @@ export default defineConfig({
   // Links are fetched when hovered, so a click on an on-demand page is served
   // from the browser's cache rather than waiting on the worker and database.
   prefetch: { prefetchAll: true, defaultStrategy: "hover" },
+  // Astro emits a per-page CSP <meta> with a hash for every inline script and
+  // style it renders, which is what lets islands hydrate under a policy with
+  // no 'unsafe-inline' for scripts. A blanket policy in `public/_headers`
+  // would silently block exactly those scripts, so it carries none.
+  // Inline style attributes stay allowed because the UI primitives position
+  // menus with them; frame embedding is refused by X-Frame-Options in
+  // `public/_headers`, since a <meta> policy cannot carry frame-ancestors.
+  security: {
+    csp: {
+      directives: [
+        "default-src 'self'",
+        "img-src 'self' data:",
+        "font-src 'self'",
+        "connect-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+      ],
+      styleDirective: {
+        resources: [
+          "'self'",
+          { resource: "'unsafe-inline'", kind: "attribute" },
+        ],
+      },
+    },
+  },
   // No Astro sessions (Better Auth owns sessions in the API) and no image
   // transforms, so the adapter provisions neither a KV namespace nor an
   // Images binding on deploy.

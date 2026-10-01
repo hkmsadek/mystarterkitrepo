@@ -10,7 +10,7 @@
 
 import { Route as rootRouteImport } from './../routes/__root'
 import { Route as appRouteRouteImport } from './../routes/(app)/route'
-import { Route as appIndexRouteImport } from './../routes/(app)/index'
+import { Route as appDashboardRouteImport } from './../routes/(app)/dashboard'
 import { Route as appMembersRouteImport } from './../routes/(app)/members'
 import { Route as appPostsRouteImport } from './../routes/(app)/posts'
 import { Route as appSettingsRouteImport } from './../routes/(app)/settings'
@@ -22,9 +22,9 @@ const appRouteRoute = appRouteRouteImport.update({
   id: '/(app)',
   getParentRoute: () => rootRouteImport,
 } as any)
-const appIndexRoute = appIndexRouteImport.update({
-  id: '/',
-  path: '/',
+const appDashboardRoute = appDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => appRouteRoute,
 } as any)
 const appMembersRoute = appMembersRouteImport.update({
@@ -59,51 +59,63 @@ const authSignupRoute = authSignupRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/dashboard': typeof appDashboardRoute
   '/members': typeof appMembersRoute
   '/posts': typeof appPostsRoute
   '/settings': typeof appSettingsRoute
   '/todos': typeof appTodosRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
-  '/': typeof appIndexRoute
 }
 export interface FileRoutesByTo {
+  '/dashboard': typeof appDashboardRoute
   '/members': typeof appMembersRoute
   '/posts': typeof appPostsRoute
   '/settings': typeof appSettingsRoute
   '/todos': typeof appTodosRoute
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
-  '/': typeof appIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/(app)': typeof appRouteRouteWithChildren
+  '/(app)/dashboard': typeof appDashboardRoute
   '/(app)/members': typeof appMembersRoute
   '/(app)/posts': typeof appPostsRoute
   '/(app)/settings': typeof appSettingsRoute
   '/(app)/todos': typeof appTodosRoute
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
-  '/(app)/': typeof appIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/members' | '/posts' | '/settings' | '/todos' | '/login' | '/signup' | '/'
+    | '/dashboard'
+    | '/members'
+    | '/posts'
+    | '/settings'
+    | '/todos'
+    | '/login'
+    | '/signup'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/members' | '/posts' | '/settings' | '/todos' | '/login' | '/signup' | '/'
+    | '/dashboard'
+    | '/members'
+    | '/posts'
+    | '/settings'
+    | '/todos'
+    | '/login'
+    | '/signup'
   id:
     | '__root__'
     | '/(app)'
+    | '/(app)/dashboard'
     | '/(app)/members'
     | '/(app)/posts'
     | '/(app)/settings'
     | '/(app)/todos'
     | '/(auth)/login'
     | '/(auth)/signup'
-    | '/(app)/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -121,11 +133,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(app)/': {
-      id: '/(app)/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof appIndexRouteImport
+    '/(app)/dashboard': {
+      id: '/(app)/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof appDashboardRouteImport
       parentRoute: typeof appRouteRoute
     }
     '/(app)/members': {
@@ -174,19 +186,19 @@ declare module '@tanstack/react-router' {
 }
 
 interface appRouteRouteChildren {
+  appDashboardRoute: typeof appDashboardRoute
   appMembersRoute: typeof appMembersRoute
   appPostsRoute: typeof appPostsRoute
   appSettingsRoute: typeof appSettingsRoute
   appTodosRoute: typeof appTodosRoute
-  appIndexRoute: typeof appIndexRoute
 }
 
 const appRouteRouteChildren: appRouteRouteChildren = {
+  appDashboardRoute: appDashboardRoute,
   appMembersRoute: appMembersRoute,
   appPostsRoute: appPostsRoute,
   appSettingsRoute: appSettingsRoute,
   appTodosRoute: appTodosRoute,
-  appIndexRoute: appIndexRoute,
 }
 
 const appRouteRouteWithChildren = appRouteRoute._addFileChildren(
