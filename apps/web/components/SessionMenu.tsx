@@ -72,6 +72,9 @@ export function SessionMenu() {
     await fetch("/api/auth/sign-out", {
       method: "POST",
       credentials: "include",
+      // Better Auth rejects a POST without a JSON body as 415.
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
     });
     window.location.assign("/");
   }
